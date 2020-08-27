@@ -1,5 +1,6 @@
 ﻿using FluentTerminal.App.Services;
 using FluentTerminal.App.Services.Utilities;
+using FluentTerminal.App.ViewModels.Utilities;
 using FluentTerminal.Models;
 using FluentTerminal.Models.Enums;
 using GalaSoft.MvvmLight;
@@ -16,43 +17,41 @@ namespace FluentTerminal.App.ViewModels.Settings
         private readonly ISettingsService _settingsService;
         private readonly IDialogService _dialogService;
         private readonly IDefaultValueProvider _defaultValueProvider;
-        private bool _isEditingCursorStyle;
-        private bool _isEditingScrollBarStyle;
 
         public bool BarIsSelected
         {
             get => CursorStyle == CursorStyle.Bar;
-            set => CursorStyle = CursorStyle.Bar;
+            set { if (value) CursorStyle = CursorStyle.Bar; }
         }
 
         public bool BlockIsSelected
         {
             get => CursorStyle == CursorStyle.Block;
-            set => CursorStyle = CursorStyle.Block;
+            set { if (value) CursorStyle = CursorStyle.Block; }
         }
 
         public bool UnderlineIsSelected
         {
             get => CursorStyle == CursorStyle.Underline;
-            set => CursorStyle = CursorStyle.Underline;
+            set { if (value) CursorStyle = CursorStyle.Underline; }
         }
 
         public bool HiddenIsSelected
         {
             get => ScrollBarStyle == ScrollBarStyle.Hidden;
-            set => ScrollBarStyle = ScrollBarStyle.Hidden;
+            set { if (value) ScrollBarStyle = ScrollBarStyle.Hidden; }
         }
 
         public bool AutoHidingIsSelected
         {
             get => ScrollBarStyle == ScrollBarStyle.AutoHiding;
-            set => ScrollBarStyle = ScrollBarStyle.AutoHiding;
+            set { if (value) ScrollBarStyle = ScrollBarStyle.AutoHiding; }
         }
 
         public bool VisibleIsSelected
         {
             get => ScrollBarStyle == ScrollBarStyle.Visible;
-            set => ScrollBarStyle = ScrollBarStyle.Visible;
+            set { if (value) ScrollBarStyle = ScrollBarStyle.Visible; }
         }
 
         public bool CursorBlink
@@ -69,6 +68,20 @@ namespace FluentTerminal.App.ViewModels.Settings
             }
         }
 
+        public bool UseAcrylicBackground
+        {
+            get => _terminalOptions.UseAcrylicBackground;
+            set
+            {
+                if (_terminalOptions.UseAcrylicBackground != value)
+                {
+                    _terminalOptions.UseAcrylicBackground = value;
+                    _settingsService.SaveTerminalOptions(_terminalOptions);
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
         public string FontFamily
         {
             get => _terminalOptions.FontFamily;
@@ -77,6 +90,20 @@ namespace FluentTerminal.App.ViewModels.Settings
                 if (_terminalOptions.FontFamily != value)
                 {
                     _terminalOptions.FontFamily = value;
+                    _settingsService.SaveTerminalOptions(_terminalOptions);
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public int FontWeight
+        {
+            get => _terminalOptions.FontWeight;
+            set
+            {
+                if (_terminalOptions.FontWeight != value)
+                {
+                    _terminalOptions.FontWeight = value;
                     _settingsService.SaveTerminalOptions(_terminalOptions);
                     RaisePropertyChanged();
                 }
@@ -116,7 +143,6 @@ namespace FluentTerminal.App.ViewModels.Settings
             get => _terminalOptions.ScrollBackLimit.ToString();
             set
             {
-                var oldValue = _terminalOptions.ScrollBackLimit;
                 if (uint.TryParse(value, out uint intValue))
                 {
                     if (intValue == uint.MinValue)
@@ -137,28 +163,15 @@ namespace FluentTerminal.App.ViewModels.Settings
             }
         }
 
-        public bool BoldText
+        public string WordSeparator
         {
-            get => _terminalOptions.BoldText;
+            get => WebViewSpecialCharEncoder.Decode(_terminalOptions.WordSeparator);
             set
             {
-                if (_terminalOptions.BoldText != value)
+                value = WebViewSpecialCharEncoder.Encode(value);
+                if (_terminalOptions.WordSeparator != value)
                 {
-                    _terminalOptions.BoldText = value;
-                    _settingsService.SaveTerminalOptions(_terminalOptions);
-                    RaisePropertyChanged();
-                }
-            }
-        }
-
-        public bool ShowTextCopied
-        {
-            get => _terminalOptions.ShowTextCopied;
-            set
-            {
-                if (_terminalOptions.ShowTextCopied != value)
-                {
-                    _terminalOptions.ShowTextCopied = value;
+                    _terminalOptions.WordSeparator = value;
                     _settingsService.SaveTerminalOptions(_terminalOptions);
                     RaisePropertyChanged();
                 }
@@ -190,16 +203,11 @@ namespace FluentTerminal.App.ViewModels.Settings
             get => _terminalOptions.CursorStyle;
             set
             {
-                if (_terminalOptions.CursorStyle != value && !_isEditingCursorStyle)
+                if (_terminalOptions.CursorStyle != value)
                 {
-                    _isEditingCursorStyle = true;
                     _terminalOptions.CursorStyle = value;
                     _settingsService.SaveTerminalOptions(_terminalOptions);
                     RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(BlockIsSelected));
-                    RaisePropertyChanged(nameof(BarIsSelected));
-                    RaisePropertyChanged(nameof(UnderlineIsSelected));
-                    _isEditingCursorStyle = false;
                 }
             }
         }
@@ -209,23 +217,22 @@ namespace FluentTerminal.App.ViewModels.Settings
             get => _terminalOptions.ScrollBarStyle;
             set
             {
-                if (_terminalOptions.ScrollBarStyle != value && !_isEditingScrollBarStyle)
+                if (_terminalOptions.ScrollBarStyle != value)
                 {
-                    _isEditingScrollBarStyle = true;
                     _terminalOptions.ScrollBarStyle = value;
                     _settingsService.SaveTerminalOptions(_terminalOptions);
                     RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(HiddenIsSelected));
-                    RaisePropertyChanged(nameof(AutoHidingIsSelected));
-                    RaisePropertyChanged(nameof(VisibleIsSelected));
-                    _isEditingScrollBarStyle = false;
                 }
             }
         }
 
-        private async Task RestoreDefaults()
+        // Requires UI thread
+        private async Task RestoreDefaultsAsync()
         {
-            var result = await _dialogService.ShowMessageDialogAsnyc(I18N.Translate("PleaseConfirm"), I18N.Translate("ConfirmRestoreTerminalOptions"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
+            // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+            var result = await _dialogService.ShowMessageDialogAsync(I18N.Translate("PleaseConfirm"),
+                    I18N.Translate("ConfirmRestoreTerminalOptions"), DialogButton.OK, DialogButton.Cancel)
+                .ConfigureAwait(true);
 
             if (result == DialogButton.OK)
             {
@@ -235,10 +242,10 @@ namespace FluentTerminal.App.ViewModels.Settings
                 ScrollBarStyle = defaults.ScrollBarStyle;
                 FontFamily = defaults.FontFamily;
                 FontSize = defaults.FontSize;
-                BoldText = defaults.BoldText;
+                FontWeight = defaults.FontWeight;
                 BackgroundOpacity = defaults.BackgroundOpacity;
                 ScrollBackLimit = defaults.ScrollBackLimit.ToString();
-                ShowTextCopied = defaults.ShowTextCopied;
+                WordSeparator = defaults.WordSeparator;
             }
         }
 
@@ -248,10 +255,10 @@ namespace FluentTerminal.App.ViewModels.Settings
             _dialogService = dialogService;
             _defaultValueProvider = defaultValueProvider;
 
-            RestoreDefaultsCommand = new RelayCommand(async () => await RestoreDefaults().ConfigureAwait(false));
+            RestoreDefaultsCommand = new RelayCommand(async () => await RestoreDefaultsAsync().ConfigureAwait(false));
 
             Fonts = systemFontService.GetSystemFontFamilies().OrderBy(s => s.Name);
-            Sizes = Enumerable.Range(1, 72);
+            Sizes = Enumerable.Range(2, 72);
 
             _terminalOptions = _settingsService.GetTerminalOptions();
         }

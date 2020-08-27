@@ -1,13 +1,20 @@
-﻿using FluentTerminal.App.ViewModels;
+﻿using FluentTerminal.App.Services;
+using FluentTerminal.App.Services.EventArgs;
+using FluentTerminal.App.Services.Utilities;
+using FluentTerminal.App.ViewModels;
 using GalaSoft.MvvmLight.Command;
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 namespace FluentTerminal.App.Views
 {
+    // ReSharper disable once RedundantExtendsListEntry
     public sealed partial class TabBar : UserControl
     {
         public static readonly DependencyProperty ItemsSourceProperty =
@@ -19,13 +26,31 @@ namespace FluentTerminal.App.Views
         public static readonly DependencyProperty SelectedItemProperty =
             DependencyProperty.Register(nameof(SelectedItem), typeof(object), typeof(TabBar), new PropertyMetadata(null));
 
+        private long _scrollableWidthChangedToken;
+
         public TabBar()
         {
             InitializeComponent();
-            ScrollViewer.RegisterPropertyChangedCallback(ScrollViewer.ScrollableWidthProperty, OnScrollableWidthChanged);
-            ListView.SelectionChanged += OnListViewSelectionChanged;
-            ScrollLeftButton.Tapped += OnScrollLeftButtonTapped;
-            ScrollRightButton.Tapped += OnScrollRightButtonTapped;
+            _scrollableWidthChangedToken = ScrollViewer.RegisterPropertyChangedCallback(ScrollViewer.ScrollableWidthProperty, OnScrollableWidthChanged);
+        }
+
+        private void OnListViewSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            SetScrollButtonsEnabledState();
+        }
+
+        public void DisposalPrepare()
+        {
+            ListView.ItemsSource = null;
+            ListView.SelectedItem = null;
+
+            ItemsSource = null;
+            AddCommand = null;
+            SelectedItem = null;
+
+            Bindings.StopTracking();
+
+            ScrollViewer.UnregisterPropertyChangedCallback(ScrollViewer.ScrollableWidthProperty, _scrollableWidthChangedToken);
         }
 
         public RelayCommand AddCommand
@@ -46,37 +71,23 @@ namespace FluentTerminal.App.Views
             set { SetValue(SelectedItemProperty, value); }
         }
 
-        private void OnListViewSelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void OnListViewSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var item = ListView.SelectedItem;
-            if (item != null)
+            if (!(ListView.SelectedItem is { } item)) return;
+
+            var container = ListView.ContainerFromItem(item);
+
+            while (container == null)
             {
-                var container = ListView.ContainerFromItem(item);
+                // We need to ConfigureAwait(true) because the UI thread is needed below.
+                await Task.Delay(30).ConfigureAwait(true);
 
-                if (container != null)
-                {
-                    ((UIElement)container).StartBringIntoView();
-                    SetScrollButtonsEnabledState();
-                }
-                else
-                {
-                    Task.Run(async () =>
-                    {
-                        do
-                        {
-                            await Task.Delay(50);
-                            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => container = ListView.ContainerFromItem(item));
-                        }
-                        while (container == null);
-
-                        await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-                        {
-                            ((UIElement)container).StartBringIntoView();
-                            SetScrollButtonsEnabledState();
-                        });
-                    });
-                }
+                container = ListView.ContainerFromItem(item);
             }
+
+            ((UIElement)container).StartBringIntoView();
+
+            SetScrollButtonsEnabledState();
         }
 
         private void OnScrollableWidthChanged(DependencyObject sender, DependencyProperty property)
@@ -112,5 +123,107 @@ namespace FluentTerminal.App.Views
             ScrollLeftButton.IsEnabled = ScrollViewer.HorizontalOffset > 0;
             ScrollRightButton.IsEnabled = ScrollViewer.HorizontalOffset < ScrollViewer.ScrollableWidth;
         }
+
+        #region Drag and drop support
+
+        public static bool ItemWasDropped { get; set; }
+
+        public event EventHandler<NewTabRequestedEventArgs> TabWindowChanged;
+        public event EventHandler<TerminalViewModel> TabDraggingCompleted;
+        public event TypedEventHandler<ListViewBase, DragItemsCompletedEventArgs> TabDraggedOutside;
+        public event EventHandler<bool> TabDraggingChanged;
+
+        private void ListView_DragEnter(object sender, DragEventArgs e)
+        {
+            Logger.Instance.Debug($"ListView_DragEnter.");
+            e.AcceptedOperation = DataPackageOperation.Move;
+            if (e.DragUIOverride is { } dragUiOverride)
+            {
+                dragUiOverride.IsGlyphVisible = false;
+                dragUiOverride.Caption = I18N.Translate("DropTabHere");
+            }
+        }
+
+        private async void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+        {
+            TabDraggingChanged?.Invoke(this, true);
+            ItemWasDropped = false;
+
+            Logger.Instance.Debug($"ListView_DragItemsStarting. e.Data.RequestedOperation: {e.Data.RequestedOperation}. Items count: {e.Items.Count}.");
+
+            var item = e.Items.FirstOrDefault();
+            if (item is TerminalViewModel model)
+            {
+                await model.TrayProcessCommunicationService.PauseTerminalOutputAsync(model.Terminal.Id, true);
+                e.Data.Properties.Add(Constants.TerminalViewModelStateId, await model.SerializeAsync());
+            }
+        }
+
+        private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+        {
+            TabDraggingChanged?.Invoke(this, false);
+            Logger.Instance.Debug($"ListView_DragItemsCompleted. Drop result: {args.DropResult}. Items count: {args.Items.Count}");
+
+            var item = args.Items.FirstOrDefault();
+            if (item is TerminalViewModel model)
+            {
+                if (ItemsSource.Count > 1 && !ItemWasDropped && args.DropResult == DataPackageOperation.None)
+                {
+                    TabDraggedOutside?.Invoke(sender, args);
+                    ItemWasDropped = true;
+                }
+
+                if (ItemWasDropped)
+                {
+                    TabDraggingCompleted?.Invoke(sender, model);
+                }
+
+                model.TrayProcessCommunicationService.PauseTerminalOutputAsync(model.Terminal.Id, false);
+            }
+        }
+
+        private double GetWidth(ListViewItem item)
+        {
+            return item.ActualWidth + item.Margin.Left + item.Margin.Right;
+        }
+
+        private int CalculateDropPosition(DragEventArgs e)
+        {
+            int index = 0;
+            Point position = e.GetPosition(ListView.ItemsPanelRoot);
+            for (int i = 0, posInParent = 0; i < ListView.Items.Count; ++i)
+            {
+                ListViewItem item = (ListViewItem)ListView.ContainerFromIndex(i);
+                int itemWidth = (int)GetWidth(item);
+                if (posInParent + itemWidth > position.X)
+                {
+                    index = i;
+                    break;
+                }
+                else
+                {
+                    posInParent += itemWidth;
+                }
+            }
+
+            ListViewItem targetItem = (ListViewItem)ListView.ContainerFromIndex(index);
+            Point posInItem = e.GetPosition(targetItem);
+            if (posInItem.X > GetWidth(targetItem) / 2)
+            {
+                index++;
+            }
+            return index;
+        }
+
+        private void ListView_Drop(object sender, DragEventArgs e)
+        {
+            Logger.Instance.Debug($"ListView_Drop. e.AcceptedOperation: {e.AcceptedOperation}.");
+            int dropIndex = CalculateDropPosition(e);
+            Logger.Instance.Debug($"Tab dropped to index: {dropIndex}.");
+            TabWindowChanged?.Invoke(sender, new NewTabRequestedEventArgs { DragEventArgs = e, Position = dropIndex });
+            ItemWasDropped = true;
+        }
+
+        #endregion Drag and drop support
     }
 }

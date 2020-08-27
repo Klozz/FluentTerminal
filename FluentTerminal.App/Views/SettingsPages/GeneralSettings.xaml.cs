@@ -1,4 +1,6 @@
-﻿using FluentTerminal.App.ViewModels.Settings;
+﻿using System;
+using FluentTerminal.App.ViewModels.Settings;
+using Windows.Storage.Pickers;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 
@@ -18,7 +20,8 @@ namespace FluentTerminal.App.Views.SettingsPages
             if (e.Parameter is GeneralPageViewModel viewModel)
             {
                 ViewModel = viewModel;
-                ViewModel.OnNavigatedTo();
+                // ReSharper disable once AssignmentIsFullyDiscarded
+                _ = ViewModel.OnNavigatedToAsync();
             }
         }
     }

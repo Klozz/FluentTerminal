@@ -1,11 +1,13 @@
 ﻿using FluentTerminal.App.Services;
 using FluentTerminal.App.Services.Utilities;
+using FluentTerminal.App.ViewModels.Infrastructure;
 using FluentTerminal.Models;
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace FluentTerminal.App.ViewModels
 {
@@ -41,16 +43,25 @@ namespace FluentTerminal.App.ViewModels
         private string _selection;
         private string _white;
         private string _yellow;
+        private ImageFile _backgroundThemeFile;
         private readonly IFileSystemService _fileSystemService;
+        private readonly IImageFileSystemService _imageFileSystemService;
 
         public event EventHandler<string> BackgroundChanged;
+        public event EventHandler<ImageFile> BackgroundImageChanged;
 
-        public ThemeViewModel(TerminalTheme theme, ISettingsService settingsService, IDialogService dialogService, IFileSystemService fileSystemService, bool isNew)
+        public ThemeViewModel(TerminalTheme theme,
+                              ISettingsService settingsService,
+                              IDialogService dialogService,
+                              IFileSystemService fileSystemService,
+                              IImageFileSystemService imageFileSystemService,
+                              bool isNew)
         {
             Model = theme;
             _settingsService = settingsService;
             _dialogService = dialogService;
             _fileSystemService = fileSystemService;
+            _imageFileSystemService = imageFileSystemService;
             _isNew = isNew;
 
             Name = Model.Name;
@@ -81,12 +92,16 @@ namespace FluentTerminal.App.ViewModels
             CursorAccent = Model.Colors.CursorAccent;
             Selection = Model.Colors.Selection;
 
+            BackgroundThemeFile = Model.BackgroundImage;
+
             SetActiveCommand = new RelayCommand(SetActive);
-            DeleteCommand = new RelayCommand(async () => await Delete().ConfigureAwait(false), NotPreInstalled);
+            DeleteCommand = new AsyncCommand(DeleteAsync, NotPreInstalled);
             EditCommand = new RelayCommand(Edit, NotPreInstalled);
-            CancelEditCommand = new RelayCommand(async () => await CancelEdit().ConfigureAwait(false));
-            SaveChangesCommand = new RelayCommand(SaveChanges);
-            ExportCommand = new RelayCommand(async () => await Export().ConfigureAwait(false), NotPreInstalled);
+            CancelEditCommand = new AsyncCommand(CancelEditAsync);
+            SaveChangesCommand = new AsyncCommand(SaveChangesAsync);
+            ExportCommand = new AsyncCommand(Export, NotPreInstalled);
+            ChooseBackgroundImageCommand = new AsyncCommand(ChooseBackgroundImageAsync, NotPreInstalled);
+            DeleteBackgroundImageCommand = new AsyncCommand(DeleteBackgroundImageAsync, NotPreInstalled);
         }
 
         public event EventHandler Activated;
@@ -177,7 +192,7 @@ namespace FluentTerminal.App.ViewModels
             set => Set(ref _brightYellow, value);
         }
 
-        public RelayCommand CancelEditCommand { get; }
+        public ICommand CancelEditCommand { get; }
 
         public string Cursor
         {
@@ -197,9 +212,9 @@ namespace FluentTerminal.App.ViewModels
             set => Set(ref _cyan, value);
         }
 
-        public RelayCommand DeleteCommand { get; }
-        public RelayCommand EditCommand { get; }
-        public RelayCommand ExportCommand { get; }
+        public ICommand DeleteCommand { get; }
+        public ICommand EditCommand { get; }
+        public ICommand ExportCommand { get; }
 
         public string Foreground
         {
@@ -245,7 +260,7 @@ namespace FluentTerminal.App.ViewModels
             set => Set(ref _red, value);
         }
 
-        public RelayCommand SaveChangesCommand { get; }
+        public ICommand SaveChangesCommand { get; }
 
         public string Selection
         {
@@ -253,7 +268,7 @@ namespace FluentTerminal.App.ViewModels
             set => Set(ref _selection, value);
         }
 
-        public RelayCommand SetActiveCommand { get; }
+        public ICommand SetActiveCommand { get; }
 
         public string White
         {
@@ -267,7 +282,22 @@ namespace FluentTerminal.App.ViewModels
             set => Set(ref _yellow, value);
         }
 
-        public void SaveChanges()
+        public ImageFile BackgroundThemeFile
+        {
+            get => _backgroundThemeFile;
+            set
+            {
+                Set(ref _backgroundThemeFile, value);
+                BackgroundImageChanged?.Invoke(this, value);
+            }
+        }
+
+        public ICommand ChooseBackgroundImageCommand { get; }
+
+        public ICommand DeleteBackgroundImageCommand { get; }
+
+        // Requires UI thread
+        private async Task SaveChangesAsync()
         {
             Model.Name = Name;
             Model.Author = Author;
@@ -296,92 +326,114 @@ namespace FluentTerminal.App.ViewModels
             Model.Colors.CursorAccent = CursorAccent;
             Model.Colors.Selection = Selection;
 
+            if (Model.BackgroundImage != null &&
+               BackgroundThemeFile != Model?.BackgroundImage)
+            {
+                // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+                await _imageFileSystemService
+                    .RemoveImportedImageAsync($"{Model.BackgroundImage?.Name}{Model.BackgroundImage?.FileType}")
+                    .ConfigureAwait(true);
+            }
+
+            // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+            BackgroundThemeFile = await SaveBackgroundImageAsync().ConfigureAwait(true);
+
+            Model.BackgroundImage = BackgroundThemeFile;
+
             _settingsService.SaveTheme(Model);
 
             InEditMode = false;
             _isNew = false;
         }
 
-        private async Task CancelEdit()
+        // Requires UI thread
+        private async Task CancelEditAsync()
         {
             if (_isNew)
             {
-                await Delete();
+                await DeleteAsync().ConfigureAwait(false);
+
+                return;
+            }
+
+            TerminalTheme changedTheme = new TerminalTheme()
+            {
+                Name = Name,
+                Author = Author,
+                BackgroundImage = BackgroundThemeFile,
+                Colors = new TerminalColors()
+                {
+                    Black = Black,
+                    Red = Red,
+                    Green = Green,
+                    Yellow = Yellow,
+                    Blue = Blue,
+                    Magenta = Magenta,
+                    Cyan = Cyan,
+                    White = White,
+
+                    BrightBlack = BrightBlack,
+                    BrightRed = BrightRed,
+                    BrightGreen = BrightGreen,
+                    BrightYellow = BrightYellow,
+                    BrightBlue = BrightBlue,
+                    BrightMagenta = BrightMagenta,
+                    BrightCyan = BrightCyan,
+                    BrightWhite = BrightWhite,
+
+                    Background = Background,
+                    Foreground = Foreground,
+                    Cursor = Cursor,
+                    CursorAccent = CursorAccent,
+                    Selection = Selection
+                }
+            };
+
+            if (!_fallbackTheme.Equals(changedTheme))
+            {
+                // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+                var result = await _dialogService.ShowMessageDialogAsync(I18N.Translate("PleaseConfirm"),
+                    I18N.Translate("ConfirmDiscardChanges"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
+
+                if (result == DialogButton.OK)
+                {
+                    Black = _fallbackTheme.Colors.Black;
+                    Red = _fallbackTheme.Colors.Red;
+                    Green = _fallbackTheme.Colors.Green;
+                    Yellow = _fallbackTheme.Colors.Yellow;
+                    Blue = _fallbackTheme.Colors.Blue;
+                    Magenta = _fallbackTheme.Colors.Magenta;
+                    Cyan = _fallbackTheme.Colors.Cyan;
+                    White = _fallbackTheme.Colors.White;
+
+                    BrightBlack = _fallbackTheme.Colors.BrightBlack;
+                    BrightRed = _fallbackTheme.Colors.BrightRed;
+                    BrightGreen = _fallbackTheme.Colors.BrightGreen;
+                    BrightYellow = _fallbackTheme.Colors.BrightYellow;
+                    BrightBlue = _fallbackTheme.Colors.BrightBlue;
+                    BrightMagenta = _fallbackTheme.Colors.BrightMagenta;
+                    BrightCyan = _fallbackTheme.Colors.BrightCyan;
+                    BrightWhite = _fallbackTheme.Colors.BrightWhite;
+
+                    Background = _fallbackTheme.Colors.Background;
+                    Foreground = _fallbackTheme.Colors.Foreground;
+                    Cursor = _fallbackTheme.Colors.Cursor;
+                    CursorAccent = _fallbackTheme.Colors.CursorAccent;
+                    Selection = _fallbackTheme.Colors.Selection;
+
+                    Name = _fallbackTheme.Name;
+                    Author = _fallbackTheme.Author;
+
+                    BackgroundThemeFile = _fallbackTheme.BackgroundImage;
+
+                    InEditMode = false;
+
+                    await _imageFileSystemService.RemoveTemporaryBackgroundThemeImageAsync().ConfigureAwait(false);
+                }
             }
             else
             {
-                TerminalTheme changedTheme = new TerminalTheme()
-                {
-                    Name = Name,
-                    Author = Author,
-                    Colors = new TerminalColors()
-                    {
-                        Black = Black,
-                        Red = Red,
-                        Green = Green,
-                        Yellow = Yellow,
-                        Blue = Blue,
-                        Magenta = Magenta,
-                        Cyan = Cyan,
-                        White = White,
-
-                        BrightBlack = BrightBlack,
-                        BrightRed = BrightRed,
-                        BrightGreen = BrightGreen,
-                        BrightYellow = BrightYellow,
-                        BrightBlue = BrightBlue,
-                        BrightMagenta = BrightMagenta,
-                        BrightCyan = BrightCyan,
-                        BrightWhite = BrightWhite,
-
-                        Background = Background,
-                        Foreground = Foreground,
-                        Cursor = Cursor,
-                        CursorAccent = CursorAccent,
-                        Selection = Selection
-                    }
-                };
-
-                if (!_fallbackTheme.Equals(changedTheme))
-                {
-                    var result = await _dialogService.ShowMessageDialogAsnyc(I18N.Translate("PleaseConfirm"), I18N.Translate("ConfirmDiscardChanges"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
-
-                    if (result == DialogButton.OK)
-                    {
-                        Black = _fallbackTheme.Colors.Black;
-                        Red = _fallbackTheme.Colors.Red;
-                        Green = _fallbackTheme.Colors.Green;
-                        Yellow = _fallbackTheme.Colors.Yellow;
-                        Blue = _fallbackTheme.Colors.Blue;
-                        Magenta = _fallbackTheme.Colors.Magenta;
-                        Cyan = _fallbackTheme.Colors.Cyan;
-                        White = _fallbackTheme.Colors.White;
-
-                        BrightBlack = _fallbackTheme.Colors.BrightBlack;
-                        BrightRed = _fallbackTheme.Colors.BrightRed;
-                        BrightGreen = _fallbackTheme.Colors.BrightGreen;
-                        BrightYellow = _fallbackTheme.Colors.BrightYellow;
-                        BrightBlue = _fallbackTheme.Colors.BrightBlue;
-                        BrightMagenta = _fallbackTheme.Colors.BrightMagenta;
-                        BrightCyan = _fallbackTheme.Colors.BrightCyan;
-                        BrightWhite = _fallbackTheme.Colors.BrightWhite;
-
-                        Background = _fallbackTheme.Colors.Background;
-                        Foreground = _fallbackTheme.Colors.Foreground;
-                        Cursor = _fallbackTheme.Colors.Cursor;
-                        CursorAccent = _fallbackTheme.Colors.CursorAccent;
-                        Selection = _fallbackTheme.Colors.Selection;
-
-                        Name = _fallbackTheme.Name;
-                        Author = _fallbackTheme.Author;
-
-                        InEditMode = false;
-                    }
-                }
-                else
-                {
-                    InEditMode = false;
-                }
+                InEditMode = false;
             }
         }
 
@@ -390,13 +442,35 @@ namespace FluentTerminal.App.ViewModels
             return !Model.PreInstalled;
         }
 
-        private async Task Delete()
+        // Requires UI thread
+        private async Task DeleteAsync()
         {
-            var result = await _dialogService.ShowMessageDialogAsnyc(I18N.Translate("PleaseConfirm"), I18N.Translate("ConfirmDeleteTheme"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
+            // ConfigureAwait(true) because we need to trigger Deleted event in the calling (UI) thread.
+            var result = await _dialogService.ShowMessageDialogAsync(I18N.Translate("PleaseConfirm"),
+                I18N.Translate("ConfirmDeleteTheme"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
 
             if (result == DialogButton.OK)
             {
+                // ConfigureAwait(true) because we need to trigger Deleted event in the calling (UI) thread.
+                await DeleteBackgroundImageIfExistsAsync().ConfigureAwait(true);
+                // ConfigureAwait(true) because we need to trigger Deleted event in the calling (UI) thread.
+                await _imageFileSystemService.RemoveTemporaryBackgroundThemeImageAsync().ConfigureAwait(true);
+
                 Deleted?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        // Requires UI thread
+        private async Task DeleteBackgroundImageAsync()
+        {
+            // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+            var result = await _dialogService.ShowMessageDialogAsync(I18N.Translate("PleaseConfirm"),
+                    I18N.Translate("ConfirmDeleteBackgroundImage"), DialogButton.OK, DialogButton.Cancel)
+                .ConfigureAwait(true);
+
+            if (result == DialogButton.OK)
+            {
+                BackgroundThemeFile = null;
             }
         }
 
@@ -413,8 +487,60 @@ namespace FluentTerminal.App.ViewModels
 
         private Task Export()
         {
-            var content = JsonConvert.SerializeObject(Model, Formatting.Indented, new JsonSerializerSettings { ContractResolver = new TerminalThemeContractResolver() });
-            return _fileSystemService.SaveTextFile(Name, "Fluent Terminal Theme", ".flutecolors", content);
+            var encodedImage = _imageFileSystemService.EncodeImage(BackgroundThemeFile);
+            var exportedTheme = new ExportedTerminalTheme(Model, encodedImage);
+            var content = JsonConvert.SerializeObject(exportedTheme, Formatting.Indented, new JsonSerializerSettings { ContractResolver = new TerminalThemeContractResolver() });
+            return _fileSystemService.SaveTextFileAsync(Name, "Fluent Terminal Theme", ".flutecolors", content);
+        }
+
+        private async Task<ImageFile> SaveBackgroundImageAsync()
+        {
+            if (BackgroundThemeFile == null)
+            {
+                return BackgroundThemeFile;
+            }
+
+            if (BackgroundThemeFile == Model.BackgroundImage)
+            {
+                return BackgroundThemeFile;
+            }
+
+            var importedBackgroundThemeFile =
+                await _fileSystemService.SaveImageInRoamingAsync(BackgroundThemeFile).ConfigureAwait(false);
+
+            await _imageFileSystemService.RemoveTemporaryBackgroundThemeImageAsync().ConfigureAwait(false);
+
+            return importedBackgroundThemeFile;
+        }
+
+        // Requires UI thread
+        private async Task ChooseBackgroundImageAsync()
+        {
+            // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+            var chosenImage = await _imageFileSystemService
+                .ImportTemporaryImageFileAsync(new[] {".jpeg", ".png", ".jpg"}).ConfigureAwait(true);
+
+            if(chosenImage != null)
+            {
+                BackgroundThemeFile = chosenImage;
+            }
+        }
+
+        // Requires UI thread
+        private async Task DeleteBackgroundImageIfExistsAsync()
+        {
+            if (BackgroundThemeFile != null)
+            {
+                var imageFile = Model.BackgroundImage;
+
+                BackgroundThemeFile = null;
+
+                if (imageFile != null)
+                {
+                    await _imageFileSystemService.RemoveImportedImageAsync($"{imageFile.Name}{imageFile.FileType}")
+                        .ConfigureAwait(false);
+                }
+            }
         }
     }
 }

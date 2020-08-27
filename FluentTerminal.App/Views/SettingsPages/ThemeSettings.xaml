@@ -8,15 +8,8 @@
     xmlns:views="using:FluentTerminal.App.Views"
     mc:Ignorable="d">
     <Grid x:Name="Root">
-        <Grid.Background>
-            <AcrylicBrush
-                BackgroundSource="HostBackdrop"
-                FallbackColor="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay}"
-                TintColor="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay}"
-                TintOpacity="{x:Bind ViewModel.BackgroundOpacity, Mode=OneWay}" />
-        </Grid.Background>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="160" />
+            <ColumnDefinition Width="200" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -24,63 +17,68 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+
         <Border
             Grid.RowSpan="3"
             Grid.Column="0"
-            Background="{ThemeResource SystemControlAcrylicWindowBrush}" />
-        <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="{StaticResource HeaderMargin}">
+            Background="{ThemeResource SystemControlChromeMediumAcrylicElementMediumBrush}" />
+        <Grid
+            Grid.Row="1"
+            Grid.ColumnSpan="2"
+            Margin="{StaticResource HeaderMargin}"
+            RequestedTheme="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay, Converter={StaticResource BackgroundToApplicationThemeConverter}}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="200" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <TextBlock
-                Margin="0,10,0,0"
                 VerticalAlignment="Center"
                 FontSize="28"
+                RequestedTheme="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay, Converter={StaticResource BackgroundToApplicationThemeConverter}}"
                 Style="{StaticResource TitleTextBlockStyle}"
-                x:Uid="Theme"
-                Text="Themes" />
+                Text="{x:Bind Converter={StaticResource I18NConverter}, ConverterParameter=Setting_Themes.Content}" />
             <CommandBar
                 Grid.Column="1"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
                 Background="Transparent"
                 DefaultLabelPosition="Right"
+                RequestedTheme="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay, Converter={StaticResource BackgroundToApplicationThemeConverter}}"
                 Visibility="{x:Bind ViewModel.SelectedTheme.InEditMode, Mode=OneWay, Converter={StaticResource FalseToVisibleConverter}}">
                 <AppBarButton
                     Name="SetActiveButton"
+                    x:Uid="SetDefaultAppBarButton"
                     Command="{x:Bind ViewModel.SelectedTheme.SetActiveCommand, Mode=OneWay}"
                     Icon="Accept"
                     IsEnabled="{Binding ViewModel.SelectedTheme.IsActive, Mode=OneWay, Converter={StaticResource NegateConverter}}"
-                    x:Uid="SetActiveAppBarButton"
                     Label="Set Active" />
                 <AppBarButton
                     Name="ExportButton"
-                    Command="{x:Bind ViewModel.SelectedTheme.ExportCommand, Mode=OneWay}"
                     x:Uid="ExportAppBarButton"
+                    Command="{x:Bind ViewModel.SelectedTheme.ExportCommand, Mode=OneWay}"
                     Label="Export">
                     <AppBarButton.Icon>
-                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xEE71;" />
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEE71;" />
                     </AppBarButton.Icon>
                 </AppBarButton>
                 <AppBarButton
                     Name="CloneButton"
+                    x:Uid="CloneAppBarButton"
                     Command="{x:Bind ViewModel.CloneCommand, Mode=OneWay}"
                     CommandParameter="{x:Bind ViewModel.SelectedTheme, Mode=OneWay}"
                     Icon="Copy"
-                    x:Uid="CloneAppBarButton"
                     Label="Clone" />
                 <AppBarButton
                     Name="EditButton"
+                    x:Uid="EditAppBarButton"
                     Command="{x:Bind ViewModel.SelectedTheme.EditCommand, Mode=OneWay}"
                     Icon="Edit"
-                    x:Uid="EditAppBarButton"
                     Label="Edit" />
                 <AppBarButton
                     Name="DeleteButton"
+                    x:Uid="DeleteAppBarButton"
                     Command="{x:Bind ViewModel.SelectedTheme.DeleteCommand, Mode=OneWay}"
                     Icon="Delete"
-                    x:Uid="DeleteAppBarButton"
                     Label="Delete" />
             </CommandBar>
             <CommandBar
@@ -92,21 +90,22 @@
                 Visibility="{x:Bind ViewModel.SelectedTheme.InEditMode, Mode=OneWay, Converter={StaticResource TrueToVisibleConverter}}">
                 <AppBarButton
                     Name="SaveButton"
+                    x:Uid="SaveAppBarButton"
                     Command="{x:Bind ViewModel.SelectedTheme.SaveChangesCommand, Mode=OneWay}"
                     Icon="Save"
-                    x:Uid="SaveAppBarButton"
                     Label="Save" />
                 <AppBarButton
                     Name="CancelButton"
+                    x:Uid="CancelAppBarButton"
                     Command="{x:Bind ViewModel.SelectedTheme.CancelEditCommand, Mode=OneWay}"
                     Icon="Cancel"
-                    x:Uid="CancelAppBarButton"
                     Label="Cancel" />
             </CommandBar>
         </Grid>
         <ScrollViewer
             Grid.Row="2"
             Grid.Column="0"
+            RequestedTheme="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay, Converter={StaticResource BackgroundToApplicationThemeConverter}}"
             VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="{StaticResource ItemMargin}">
                 <ListView ItemsSource="{x:Bind ViewModel.Themes}" SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}">
@@ -150,7 +149,10 @@
                                 Margin="0,0,6,0">
                                 <SymbolIcon Symbol="Add" />
                             </Viewbox>
-                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" x:Uid="NewTheme" Text="Create new" />
+                            <TextBlock
+                                x:Uid="NewTheme"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Create new" />
                         </StackPanel>
                     </Button.Content>
                 </Button>
@@ -170,7 +172,10 @@
                                 Margin="0,0,6,0">
                                 <SymbolIcon Symbol="OpenFile" />
                             </Viewbox>
-                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" x:Uid="ImportTheme" Text="Import" />
+                            <TextBlock
+                                x:Uid="ImportTheme"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Import" />
                         </StackPanel>
                     </Button.Content>
                 </Button>
@@ -180,6 +185,7 @@
         <ContentControl
             Grid.Row="2"
             Grid.Column="1"
+            Margin="0,10"
             HorizontalContentAlignment="Stretch"
             Content="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}"
             RequestedTheme="{x:Bind ViewModel.SelectedTheme.Background, Mode=OneWay, Converter={StaticResource BackgroundToApplicationThemeConverter}}">
@@ -199,7 +205,6 @@
                             </TextBlock>
 
                             <TextBlock
-                                Margin="{StaticResource ItemMargin}"
                                 FontSize="14"
                                 Style="{StaticResource SubtitleTextBlockStyle}"
                                 Text="{x:Bind Author, Mode=OneWay}"
@@ -211,19 +216,19 @@
 
                             <!--  EDIT THEME  -->
                             <TextBox
+                                x:Uid="ThemeName"
                                 Width="200"
                                 Margin="{StaticResource ItemMargin}"
                                 HorizontalAlignment="Left"
-                                x:Uid="ThemeName"
                                 Header="Name"
                                 Text="{x:Bind Name, Mode=TwoWay}"
                                 Visibility="{x:Bind InEditMode, Mode=OneWay, Converter={StaticResource TrueToVisibleConverter}}" />
 
                             <TextBox
+                                x:Uid="ThemeAuthor"
                                 Width="200"
                                 Margin="{StaticResource ItemMargin}"
                                 HorizontalAlignment="Left"
-                                x:Uid="ThemeAuthor"
                                 Header="Author"
                                 Text="{x:Bind Author, Mode=TwoWay}"
                                 Visibility="{x:Bind InEditMode, Mode=OneWay, Converter={StaticResource TrueToVisibleConverter}}" />
@@ -243,108 +248,157 @@
                                         <Setter Property="Height" Value="24" />
                                     </Style>
                                 </Grid.Resources>
-                                <TextBlock Grid.Row="0" x:Uid="ColorPalette" Text="Color palette" />
                                 <TextBlock
+                                    x:Uid="ColorPalette"
+                                    Grid.Row="0"
+                                    Text="Color palette" />
+                                <TextBlock
+                                    x:Uid="ClickColorEdit"
                                     Grid.Row="1"
-                                    Margin="0,0,0,8"
                                     FontSize="14"
                                     FontStyle="Italic"
                                     Foreground="LightGray"
-                                    x:Uid="ClickColorEdit"
                                     Text="Click on a color to edit"
                                     Visibility="{x:Bind InEditMode, Mode=OneWay, Converter={StaticResource TrueToVisibleConverter}}" />
-                                <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <StackPanel
+                                    Grid.Row="2"
+                                    Margin="0,6,0,0"
+                                    Orientation="Horizontal">
                                     <views:TerminalColorPicker
                                         ColorName="Black"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Black, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Black, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Red"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Red, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Red, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Green"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Green, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Green, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Yellow"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Yellow, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Yellow, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Blue"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Blue, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Blue, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Magenta"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Magenta, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Magenta, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Cyan"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Cyan, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Cyan, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="White"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind White, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind White, Mode=TwoWay}" />
+                                    <TextBlock
+                                        x:Uid="Colors"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="Colors" />
                                 </StackPanel>
-                                <StackPanel Grid.Row="3" Orientation="Horizontal">
+                                <StackPanel
+                                    Grid.Row="3"
+                                    Margin="{StaticResource ItemMargin}"
+                                    Orientation="Horizontal">
                                     <views:TerminalColorPicker
                                         ColorName="Bright Black"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightBlack, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightBlack, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright Red"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightRed, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightRed, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright Green"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightGreen, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightGreen, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright Yellow"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightYellow, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightYellow, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright Blue"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightBlue, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightBlue, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright Magenta"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightMagenta, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightMagenta, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright Cyan"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightCyan, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightCyan, Mode=TwoWay}" />
                                     <views:TerminalColorPicker
                                         ColorName="Bright White"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind BrightWhite, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind BrightWhite, Mode=TwoWay}" />
+                                    <TextBlock
+                                        x:Uid="BrightColors"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="Bright colors" />
                                 </StackPanel>
-                                <StackPanel Grid.Row="4" Orientation="Horizontal">
+                                <StackPanel Grid.Row="4">
                                     <views:TerminalColorPicker
+                                        Margin="{StaticResource ItemMargin}"
                                         ColorName="Foreground"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Foreground, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Foreground, Mode=TwoWay}"
+                                        ShowName="True" />
                                     <views:TerminalColorPicker
+                                        Margin="{StaticResource ItemMargin}"
                                         ColorName="Background"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Background, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Background, Mode=TwoWay}"
+                                        ShowName="True" />
                                     <views:TerminalColorPicker
+                                        Margin="{StaticResource ItemMargin}"
                                         ColorName="Cursor"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind Cursor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind Cursor, Mode=TwoWay}"
+                                        ShowName="True" />
                                     <views:TerminalColorPicker
+                                        Margin="{StaticResource ItemMargin}"
                                         ColorName="Cursor Accent"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
-                                        SelectedColor="{x:Bind CursorAccent, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=false}" />
+                                        SelectedColor="{x:Bind CursorAccent, Mode=TwoWay}"
+                                        ShowName="True" />
                                     <views:TerminalColorPicker
+                                        Margin="{StaticResource ItemMargin}"
                                         ColorName="Selection"
                                         EnableEditing="{x:Bind InEditMode, Mode=OneWay}"
                                         IsAlphaEnabled="True"
-                                        SelectedColor="{x:Bind Selection, Mode=TwoWay, Converter={StaticResource StringToColorConverter}, ConverterParameter=true}" />
+                                        SelectedColor="{x:Bind Selection, Mode=TwoWay}"
+                                        ShowName="True" />
                                 </StackPanel>
                             </Grid>
+
+                            <StackPanel
+                                Margin="{StaticResource ItemMargin}"
+                                Orientation="Horizontal"
+                                Visibility="{x:Bind InEditMode, Mode=OneWay, Converter={StaticResource TrueToVisibleConverter}}">
+                                <TextBlock
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Text="{x:Bind Converter={StaticResource I18NConverter}, ConverterParameter=BackgroundImage.Content}" />
+
+                                <Button
+                                    Margin="0,0,6,0"
+                                    Command="{x:Bind ChooseBackgroundImageCommand}"
+                                    Content="{x:Bind Converter={StaticResource I18NConverter}, ConverterParameter=BrowseButton.Content}" />
+
+                                <HyperlinkButton
+                                    x:Uid="ResetBtn"
+                                    Command="{x:Bind DeleteBackgroundImageCommand}"
+                                    Content="Reset"
+                                    Visibility="{x:Bind BackgroundThemeFile, Converter={StaticResource NullToCollapsedConverter}, Mode=OneWay}" />
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </DataTemplate>

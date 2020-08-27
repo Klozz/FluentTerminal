@@ -2,8 +2,8 @@
 using FluentTerminal.App.Utilities;
 using FluentTerminal.App.ViewModels;
 using FluentTerminal.App.Views.SettingsPages;
-using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Windows.ApplicationModel.Core;
 using Windows.Foundation;
 using Windows.UI.Core;
@@ -11,8 +11,8 @@ using Windows.UI.Core.Preview;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Navigation;
+using MUXC = Microsoft.UI.Xaml.Controls;
 
 namespace FluentTerminal.App.Views
 {
@@ -28,7 +28,6 @@ namespace FluentTerminal.App.Views
         {
             InitializeComponent();
             Root.DataContext = this;
-            var asd= I18N.Translate("Setting");
             ApplicationView.GetForCurrentView().Title = I18N.Translate("Setting");
 
             CoreApplicationViewTitleBar coreTitleBar = CoreApplication.GetCurrentView().TitleBar;
@@ -38,7 +37,8 @@ namespace FluentTerminal.App.Views
             _titleBar = ApplicationView.GetForCurrentView().TitleBar;
             _dispatcher = Window.Current.Dispatcher;
 
-            SetTitleBarColors();
+            // ReSharper disable once AssignmentIsFullyDiscarded
+            _ = SetTitleBarColorsAsync();
 
             _uiSettings = new UISettings();
             _uiSettings.ColorValuesChanged += OnColorValuesChanged;
@@ -49,15 +49,16 @@ namespace FluentTerminal.App.Views
 
         private void OnColorValuesChanged(UISettings sender, object args)
         {
-            if (_onThemesPage == false)
+            if (!_onThemesPage)
             {
-                SetTitleBarColors();
+                // ReSharper disable once AssignmentIsFullyDiscarded
+                _ = SetTitleBarColorsAsync();
             }
         }
 
-        private IAsyncAction SetTitleBarColors()
+        private Task SetTitleBarColorsAsync()
         {
-            return _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            return _dispatcher.ExecuteAsync(() =>
             {
                 var theme = Application.Current.RequestedTheme == ApplicationTheme.Light ? ElementTheme.Light : ElementTheme.Dark;
                 ContrastHelper.SetTitleBarButtonsForTheme(theme);
@@ -73,34 +74,19 @@ namespace FluentTerminal.App.Views
             if (e.Parameter is SettingsViewModel viewModel)
             {
                 ViewModel = viewModel;
-                ViewModel.AboutPageRequested += OnAboutPageRequested;
             }
-        }
-
-        private void OnAboutPageRequested(object sender, System.EventArgs e)
-        {
-            _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                ContentFrame.Navigate(typeof(About), ViewModel.About);
-
-                // Deselect item in NavigationView (https://stackoverflow.com/a/49082640/4132379)
-                NavigationView.MenuItems.Add(hiddenNavigationItem);
-                NavigationView.SelectedItem = hiddenNavigationItem;
-                NavigationView.SelectedItem = null;
-                NavigationView.MenuItems.Remove(hiddenNavigationItem);
-            });
         }
 
         private void NavigationView_Loaded(object sender, RoutedEventArgs e)
         {
-            NavigationView.SelectedItem = NavigationView.MenuItems.Cast<NavigationViewItemBase>().FirstOrDefault(m => m.Tag.ToString() == "general");
+            NavigationView.SelectedItem = NavigationView.MenuItems.Cast<MUXC.NavigationViewItemBase>().FirstOrDefault(m => m.Tag.ToString() == "general");
         }
 
-        private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+        private void NavigationView_SelectionChanged(MUXC.NavigationView sender, MUXC.NavigationViewSelectionChangedEventArgs args)
         {
             _onThemesPage = false;
 
-            if (args.SelectedItem is NavigationViewItem item)
+            if (args.SelectedItem is MUXC.NavigationViewItem item)
             {
                 switch (item.Tag)
                 {
@@ -109,7 +95,7 @@ namespace FluentTerminal.App.Views
                         break;
 
                     case "profiles":
-                        ContentFrame.Navigate(typeof(ShellProfileSettings), ViewModel.Shell);
+                        ContentFrame.Navigate(typeof(ShellProfileSettings), ViewModel.Profiles);
                         break;
 
                     case "themes":
@@ -128,18 +114,18 @@ namespace FluentTerminal.App.Views
                     case "mouse":
                         ContentFrame.Navigate(typeof(MouseSettings), ViewModel.Mouse);
                         break;
+
+                    case "sshprofiles":
+                        ContentFrame.Navigate(typeof(SshProfileSettings), ViewModel.SshProfiles);
+                        break;
                 }
             }
 
             if (!_onThemesPage)
             {
-                SetTitleBarColors();
+                // ReSharper disable once AssignmentIsFullyDiscarded
+                _ = SetTitleBarColorsAsync();
             }
-        }
-
-        private void AboutTapped(object sender, TappedRoutedEventArgs e)
-        {
-            OnAboutPageRequested(sender, EventArgs.Empty);
         }
 
         private void SettingsPage_CloseRequested(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
@@ -154,7 +140,7 @@ namespace FluentTerminal.App.Views
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            ApplicationView.GetForCurrentView().TryResizeView(new Size { Width = 800, Height = 600 });
+            ApplicationView.GetForCurrentView().TryResizeView(new Size { Width = 1024, Height = 768 });
         }
     }
 }

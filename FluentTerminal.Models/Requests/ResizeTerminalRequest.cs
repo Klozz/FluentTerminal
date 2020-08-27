@@ -1,8 +1,10 @@
 ﻿namespace FluentTerminal.Models.Requests
 {
-    public class ResizeTerminalRequest
+    public class ResizeTerminalRequest : IMessage
     {
-        public int TerminalId { get; set; }
+        public byte Identifier => (byte) MessageIdentifiers.ResizeTerminalRequest;
+
+        public byte TerminalId { get; set; }
 
         public TerminalSize NewSize { get; set; }
     }

@@ -1,6 +1,7 @@
 ﻿using FluentTerminal.App.Services.EventArgs;
 using System;
 using System.Threading.Tasks;
+using Windows.UI.Core;
 
 namespace FluentTerminal.App.Services
 {
@@ -14,9 +15,13 @@ namespace FluentTerminal.App.Services
         int Id { get; }
         string Title { get; set; }
 
-        Task RunOnDispatcherThread(Action action);
+        Task ExecuteOnUiThreadAsync(Action action, CoreDispatcherPriority priority = CoreDispatcherPriority.Normal,
+            bool enforceNewSchedule = false);
 
-        Task<bool> TryClose();
+        Task<T> ExecuteOnUiThreadAsync<T>(Func<T> func, CoreDispatcherPriority priority = CoreDispatcherPriority.Normal,
+            bool enforceNewSchedule = false);
+
+        Task<bool> TryCloseAsync();
 
         bool ToggleFullScreen();
         bool IsApiContractPresent(string api, ushort version);

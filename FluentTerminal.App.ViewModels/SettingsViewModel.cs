@@ -9,32 +9,29 @@ namespace FluentTerminal.App.ViewModels
     {
         public SettingsViewModel(ISettingsService settingsService, IDefaultValueProvider defaultValueProvider, IDialogService dialogService,
             ITrayProcessCommunicationService trayProcessCommunicationService, IThemeParserFactory themeParserFactory, ISystemFontService systemFontService,
-            IFileSystemService fileSystemService, IStartupTaskService startupTaskService, IUpdateService updateService, IApplicationView applicationView, IApplicationLanguageService applicationLanguageService)
+            IFileSystemService fileSystemService, IStartupTaskService startupTaskService, IApplicationView applicationView,
+            IApplicationLanguageService applicationLanguageService, ApplicationDataContainers containers,
+            IImageFileSystemService imageFileSystemService)
         {
-            About = new AboutPageViewModel(settingsService, updateService, applicationView);
-            KeyBindings = new KeyBindingsPageViewModel(settingsService, dialogService, defaultValueProvider, trayProcessCommunicationService);
-            General = new GeneralPageViewModel(settingsService, dialogService, defaultValueProvider, startupTaskService, applicationLanguageService);
-            Shell = new ProfilesPageViewModel(settingsService, dialogService, defaultValueProvider, fileSystemService, applicationView);
+            KeyBindings = new KeyBindingsPageViewModel(settingsService, dialogService, trayProcessCommunicationService);
+            General = new GeneralPageViewModel(settingsService, dialogService, defaultValueProvider, startupTaskService, applicationLanguageService, trayProcessCommunicationService, fileSystemService);
+            Profiles = new ProfilesPageViewModel(settingsService, dialogService, defaultValueProvider, fileSystemService, applicationView);
             Terminal = new TerminalPageViewModel(settingsService, dialogService, defaultValueProvider, systemFontService);
-            Themes = new ThemesPageViewModel(settingsService, dialogService, defaultValueProvider, themeParserFactory, fileSystemService);
+            Themes = new ThemesPageViewModel(settingsService, dialogService, defaultValueProvider, themeParserFactory, fileSystemService, imageFileSystemService);
             Mouse = new MousePageViewModel(settingsService, dialogService, defaultValueProvider);
+            SshProfiles = new SshProfilesPageViewModel(settingsService, dialogService, fileSystemService,
+                applicationView, trayProcessCommunicationService, containers.HistoryContainer);
         }
 
         public event EventHandler Closed;
-        public event EventHandler AboutPageRequested;
 
         public GeneralPageViewModel General { get; }
         public KeyBindingsPageViewModel KeyBindings { get; }
-        public ProfilesPageViewModel Shell { get; }
+        public ProfilesPageViewModel Profiles { get; }
         public TerminalPageViewModel Terminal { get; }
         public ThemesPageViewModel Themes { get; }
         public MousePageViewModel Mouse { get; }
-        public AboutPageViewModel About { get; }
-
-        public void NavigateToAboutPage()
-        {
-            AboutPageRequested?.Invoke(this, EventArgs.Empty);
-        }
+        public SshProfilesPageViewModel SshProfiles { get; }
 
         public void Close()
         {

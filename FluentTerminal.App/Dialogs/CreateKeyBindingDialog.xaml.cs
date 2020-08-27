@@ -9,9 +9,11 @@ using System.Threading.Tasks;
 using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using FluentTerminal.App.Services;
 
 namespace FluentTerminal.App.Dialogs
 {
+    // ReSharper disable once RedundantExtendsListEntry
     public sealed partial class CreateKeyBindingDialog : ContentDialog, ICreateKeyBindingDialog, INotifyPropertyChanged
     {
         private bool _ctrl;
@@ -47,7 +49,10 @@ namespace FluentTerminal.App.Dialogs
         public int Key
         {
             get => _key;
-            set => Set(ref _key, value);
+            set
+            {
+                Set(ref _key, value);
+            }
         }
 
         public CreateKeyBindingDialog()
@@ -65,23 +70,13 @@ namespace FluentTerminal.App.Dialogs
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public async Task<KeyBinding> CreateKeyBinding()
+        public Task<KeyBinding> CreateKeyBinding()
         {
-            var result = await ShowAsync();
-
-            if (result == ContentDialogResult.Primary)
-            {
-                return new KeyBinding
-                {
-                    Alt = Alt,
-                    Ctrl = Ctrl,
-                    Key = Key,
-                    Meta = Meta,
-                    Shift = Shift
-                };
-            }
-
-            return null;
+            return ShowAsync().AsTask()
+                .ContinueWith(
+                    t => t.Result == ContentDialogResult.Primary
+                        ? new KeyBinding {Alt = Alt, Ctrl = Ctrl, Key = Key, Meta = Meta, Shift = Shift}
+                        : null, TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
         private void OnResetButtonPreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -132,6 +127,11 @@ namespace FluentTerminal.App.Dialogs
 
         private void Set<T>(ref T field, T value, [CallerMemberName]string propertyName = "")
         {
+            if (field?.Equals(value) ?? value == null)
+            {
+                return;
+            }
+
             field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }

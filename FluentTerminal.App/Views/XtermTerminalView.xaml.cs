@@ -1,6 +1,5 @@
-﻿using Fleck;
+﻿using FluentTerminal.App.Converters;
 using FluentTerminal.App.Services;
-using FluentTerminal.App.Services.Utilities;
 using FluentTerminal.App.Utilities;
 using FluentTerminal.App.ViewModels;
 using FluentTerminal.Models;
@@ -9,40 +8,121 @@ using FluentTerminal.RuntimeComponent.Enums;
 using FluentTerminal.RuntimeComponent.Interfaces;
 using FluentTerminal.RuntimeComponent.WebAllowedObjects;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Windows.ApplicationModel.Core;
 using Windows.Foundation;
+using Windows.System;
 using Windows.UI;
-using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Data;
 
 namespace FluentTerminal.App.Views
 {
+    // ReSharper disable once RedundantExtendsListEntry
     public sealed partial class XtermTerminalView : UserControl, IxtermEventListener, ITerminalView
     {
-        private readonly ManualResetEventSlim _connectedEvent;
-        private readonly SemaphoreSlim _navigationCompleted;
-        private readonly MenuFlyoutItem _copyMenuItem;
-        private BlockingCollection<Action> _dispatcherJobs;
-        private readonly MenuFlyoutItem _pasteMenuItem;
         private WebView _webView;
-        private readonly DebouncedAction<TerminalOptions> _optionsChanged;
-        private IWebSocketConnection _socket;
+        private readonly DelayedAction<TerminalOptions> _optionsChanged;
+        private TerminalBridge _terminalBridge;
+
+        private volatile bool _terminalClosed;
+
+        // Members related to initialization
+        private readonly TaskCompletionSource<object> _tcsConnected = new TaskCompletionSource<object>();
+        private readonly TaskCompletionSource<object> _tcsNavigationCompleted = new TaskCompletionSource<object>();
+
+        #region Resize handling
+
+        // Members related to resize handling
+        private static readonly TimeSpan ResizeDelay = TimeSpan.FromMilliseconds(60);
+        private readonly object _resizeLock = new object();
+        private TerminalSize _requestedSize;
+        private TerminalSize _setSize;
+        private DateTime _resizeScheduleTime;
+        private Task _resizeTask;
+        private MemoryStream _outputBlockedBuffer;
+
+        // Must be called from a code locked with _resizeLock
+        private void ScheduleResize(TerminalSize size, bool scheduleIfEqual)
+        {
+            if (!scheduleIfEqual && size.EquivalentTo(_requestedSize))
+            {
+                return;
+            }
+
+            _requestedSize = size;
+            _resizeScheduleTime = DateTime.UtcNow.Add(ResizeDelay);
+
+            if (_resizeTask == null)
+            {
+                _resizeTask = ResizeTask();
+            }
+        }
+
+        private async Task ResizeTask()
+        {
+            while (true)
+            {
+                TimeSpan delay;
+                TerminalSize size = null;
+
+                lock (_resizeLock)
+                {
+                    if (_requestedSize?.EquivalentTo(_setSize) ?? true)
+                    {
+                        // Resize finished. Unblock output and exit.
+
+                        if (_outputBlockedBuffer != null)
+                        {
+                            OnOutput?.Invoke(this, _outputBlockedBuffer.ToArray());
+
+                            _outputBlockedBuffer.Dispose();
+                            _outputBlockedBuffer = null;
+                        }
+
+                        _resizeTask = null;
+
+                        break;
+                    }
+
+                    delay = _resizeScheduleTime.Subtract(DateTime.UtcNow);
+
+                    // To avoid sleeping for only few milliseconds we're introducing a threshold of 10 milliseconds
+                    if (delay.TotalMilliseconds < 10)
+                    {
+                        _setSize = size = _requestedSize;
+
+                        if (_outputBlockedBuffer == null)
+                        {
+                            _outputBlockedBuffer = new MemoryStream();
+                        }
+                    }
+                }
+
+                if (size == null)
+                {
+                    await Task.Delay(delay).ConfigureAwait(false);
+                }
+                else
+                {
+                    await ViewModel.Terminal.SetSizeAsync(_requestedSize).ConfigureAwait(false);
+                }
+            }
+        }
+
+        #endregion Resize handling
+
+        public event EventHandler<object> OnOutput;
+        public event EventHandler<string> OnPaste;
+        public event EventHandler<string> OnSessionRestart;
 
         public XtermTerminalView()
         {
             InitializeComponent();
-            StartMediatorTask();
 
             _webView = new WebView(WebViewExecutionMode.SeparateThread)
             {
@@ -52,311 +132,478 @@ namespace FluentTerminal.App.Views
 
             _webView.NavigationCompleted += _webView_NavigationCompleted;
             _webView.NavigationStarting += _webView_NavigationStarting;
+            _webView.NewWindowRequested += _webView_NewWindowRequested;
 
-            _copyMenuItem = new MenuFlyoutItem { Text = I18N.Translate("Command.Copy") };
-            _copyMenuItem.Click += Copy_Click;
-
-            _pasteMenuItem = new MenuFlyoutItem { Text = I18N.Translate("Command.Paste") };
-            _pasteMenuItem.Click += Paste_Click;
-
-            _webView.ContextFlyout = new MenuFlyout
-            {
-                Items = { _copyMenuItem, _pasteMenuItem }
-            };
-
-            _optionsChanged = new DebouncedAction<TerminalOptions>(Dispatcher, TimeSpan.FromMilliseconds(800), async options =>
+            _optionsChanged = new DelayedAction<TerminalOptions>(async options =>
             {
                 var serialized = JsonConvert.SerializeObject(options);
                 await ExecuteScriptAsync($"changeOptions('{serialized}')");
-            });
-
-            _navigationCompleted = new SemaphoreSlim(0, 1);
-            _connectedEvent = new ManualResetEventSlim(false);
+            }, 100);
 
             _webView.Navigate(new Uri("ms-appx-web:///Client/index.html"));
         }
 
         public TerminalViewModel ViewModel { get; private set; }
 
-        public Task ChangeKeyBindings()
+        public Task ChangeKeyBindingsAsync()
         {
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
             var keyBindings = ViewModel.SettingsService.GetCommandKeyBindings();
             var profiles = ViewModel.SettingsService.GetShellProfiles();
-            var serialized = JsonConvert.SerializeObject(FlattenKeyBindings(keyBindings, profiles));
+            var sshprofiles = ViewModel.SettingsService.GetSshProfiles();
+            var serialized = JsonConvert.SerializeObject(FlattenKeyBindings(keyBindings, profiles, sshprofiles));
             return ExecuteScriptAsync($"changeKeyBindings('{serialized}')");
         }
 
-        public Task ChangeOptions(TerminalOptions options)
+        public Task ChangeOptionsAsync(TerminalOptions options)
         {
-            _optionsChanged.Invoke(options);
-            return Task.CompletedTask;
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
+            return _optionsChanged.InvokeAsync(options);
         }
 
-        public Task ChangeTheme(TerminalTheme theme)
+        public Task ChangeThemeAsync(TerminalTheme theme)
         {
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
             var serialized = JsonConvert.SerializeObject(theme.Colors);
             return ExecuteScriptAsync($"changeTheme('{serialized}')");
         }
 
-        public Task FindNext(string searchText)
+        public Task ChangeFontSize(int fontSize)
         {
-            return ExecuteScriptAsync($"findNext('{searchText}')");
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
+            return ExecuteScriptAsync($"setFontSize({fontSize})");
         }
 
-        public Task FindPrevious(string searchText)
+        public Task<string> SerializeXtermStateAsync()
         {
-            return ExecuteScriptAsync($"findPrevious('{searchText}')");
+            if (_terminalClosed)
+            {
+                return Task.FromResult(string.Empty);
+            }
+
+            return ExecuteScriptAsync(@"serializeTerminal()");
         }
 
-        public async Task FocusTerminal()
+        public Task FindNextAsync(SearchRequest request)
         {
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
+            return ExecuteScriptAsync($"findNext('{request.Term}', {request.MatchCase.ToString().ToLower()}, {request.WholeWord.ToString().ToLower()}, {request.Regex.ToString().ToLower()})");
+        }
+
+        public Task FindPreviousAsync(SearchRequest request)
+        {
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
+            return ExecuteScriptAsync($"findPrevious('{request.Term}', {request.MatchCase.ToString().ToLower()}, {request.WholeWord.ToString().ToLower()}, {request.Regex.ToString().ToLower()})");
+        }
+
+        public Task FocusTerminalAsync()
+        {
+            if (_terminalClosed)
+            {
+                return Task.CompletedTask;
+            }
+
             if (_webView != null)
             {
                 _webView.Focus(FocusState.Programmatic);
-                await ExecuteScriptAsync("document.focus();").ConfigureAwait(true);
+                return ExecuteScriptAsync("document.focus();");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private const string OpenSSH = "OpenSSH";
+
+        public async Task ReconnectAsync()
+        {
+            if (ViewModel.ShellProfile.Location.Contains(OpenSSH))
+            {
+                OnSessionRestart?.Invoke(this, OpenSSH);
+
+                await Task.Delay(500).ConfigureAwait(false);
+
+                Terminal_OutputReceived(this, System.Text.Encoding.UTF8.GetBytes("\n\x1b[2EReconnecting current session...\n\x1b[E"));
+            }
+            else
+            {
+                // Fill full screen with new output to not allow erasing of available output on start of new shell
+                Terminal_OutputReceived(this, System.Text.Encoding.UTF8.GetBytes(new String('\n', _requestedSize.Rows + 1)));
+            }
+
+            if (true == await StartShellProcessAsync(_requestedSize).ConfigureAwait(false))
+            {
+                ViewModel.Terminal.Reconnect();
             }
         }
 
-        public async Task Initialize(TerminalViewModel viewModel)
+        public async Task InitializeAsync(TerminalViewModel viewModel)
         {
             ViewModel = viewModel;
             ViewModel.Terminal.OutputReceived += Terminal_OutputReceived;
             ViewModel.Terminal.RegisterSelectedTextCallback(() => ExecuteScriptAsync("term.getSelection()"));
             ViewModel.Terminal.Closed += Terminal_Closed;
 
+            _webView.SetBinding(ContextFlyoutProperty, new Binding
+            {
+                Converter = (IValueConverter)Application.Current.Resources["MenuViewModelToFlyoutMenuConverter"],
+                Mode = BindingMode.OneWay,
+                Source = ViewModel,
+                Path = new PropertyPath(nameof(TerminalViewModel.ContextMenu))
+            });
+
             var options = ViewModel.SettingsService.GetTerminalOptions();
             var keyBindings = ViewModel.SettingsService.GetCommandKeyBindings();
             var profiles = ViewModel.SettingsService.GetShellProfiles();
-            var settings = ViewModel.SettingsService.GetApplicationSettings();
+            var sshprofiles = ViewModel.SettingsService.GetSshProfiles();
             var theme = ViewModel.TerminalTheme;
-            var sessionType = SessionType.Unknown;
-            if (settings.AlwaysUseWinPty || !ViewModel.ApplicationView.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 7))
+
+            // Waiting for WebView.NavigationCompleted event to happen
+            await _tcsNavigationCompleted.Task.ConfigureAwait(false);
+
+            var size = await CreateXtermViewAsync(options, theme.Colors,
+                FlattenKeyBindings(keyBindings, profiles, sshprofiles)).ConfigureAwait(false);
+
+            // Waiting for IxtermEventListener.OnInitialized() call to happen
+            await _tcsConnected.Task;
+
+            lock (_resizeLock)
             {
-                sessionType = SessionType.WinPty;
+                // Check to see if some resizing has happened meanwhile
+                if (_requestedSize != null)
+                {
+                    size = _requestedSize;
+                }
+                else
+                {
+                    _requestedSize = size;
+                }
             }
-            else
+
+            if (false == await StartShellProcessAsync(size).ConfigureAwait(false))
             {
-                sessionType = SessionType.ConPty;
-            }
-            await _navigationCompleted.WaitAsync().ConfigureAwait(true);
-            var size = await CreateXtermView(options, theme.Colors, FlattenKeyBindings(keyBindings, profiles), sessionType).ConfigureAwait(true);
-            var port = await ViewModel.TrayProcessCommunicationService.GetAvailablePort().ConfigureAwait(true);
-            await CreateWebSocketServer(port.Port).ConfigureAwait(true);
-            _connectedEvent.Wait();
-            var response = await ViewModel.Terminal.StartShellProcess(ViewModel.ShellProfile, size, sessionType).ConfigureAwait(true);
-            if (!response.Success)
-            {
-                await ViewModel.DialogService.ShowMessageDialogAsnyc("Error", response.Error, DialogButton.OK).ConfigureAwait(true);
-                ViewModel.Terminal.ReportLauchFailed();
                 return;
             }
-            _webView.Focus(FocusState.Programmatic);
+
+            lock (_resizeLock)
+            {
+                // Check to see if some resizing has happened meanwhile
+                if (!size.EquivalentTo(_requestedSize))
+                {
+                    ScheduleResize(_requestedSize, true);
+                }
+                else
+                {
+                    _setSize = size;
+                }
+            }
+
+            if (ViewModel.ShellProfile?.Tag is ISessionSuccessTracker tracker)
+            {
+                tracker.SetSuccessfulSessionStart();
+            }
+
+            await Dispatcher.ExecuteAsync(() => _webView.Focus(FocusState.Programmatic)).ConfigureAwait(false);
+        }
+
+        public void DisposalPrepare()
+        {
+            if (_terminalBridge != null)
+            {
+                _terminalBridge.DisposalPrepare();
+                _terminalBridge = null;
+            }
+            _optionsChanged.Dispose();
+            ViewModel = null;
         }
 
         void IxtermEventListener.OnKeyboardCommand(string command)
         {
+            if (_terminalClosed)
+            {
+                return;
+            }
+
             Logger.Instance.Debug("Received keyboard command: '{command}'", command);
 
             if (Enum.TryParse(command, true, out Command commandValue))
             {
-                _dispatcherJobs.Add(() => ViewModel.Terminal.ProcessKeyboardCommand(commandValue.ToString()));
+                ViewModel.Terminal.ProcessKeyboardCommand(commandValue.ToString());
             }
             else if (Guid.TryParse(command, out Guid shellProfileId))
             {
-                _dispatcherJobs.Add(() => ViewModel.Terminal.ProcessKeyboardCommand(shellProfileId.ToString()));
+                ViewModel.Terminal.ProcessKeyboardCommand(shellProfileId.ToString());
             }
         }
 
-        void IxtermEventListener.OnMouseClick(MouseButton mouseButton, int x, int y, bool hasSelection)
+        void IxtermEventListener.OnMouseClick(MouseButton mouseButton, int x, int y, bool hasSelection, string hoveredUri)
         {
-            _dispatcherJobs.Add(() =>
+            if (_terminalClosed)
             {
-                if (mouseButton == MouseButton.Middle)
+                return;
+            }
+
+            var action = MouseAction.None;
+
+            switch (mouseButton)
+            {
+                case MouseButton.Middle:
+                    action = ViewModel.ApplicationSettings.MouseMiddleClickAction;
+                    break;
+                case MouseButton.Right:
+                    action = ViewModel.ApplicationSettings.MouseRightClickAction;
+                    break;
+            }
+
+            if (action == MouseAction.ContextMenu)
+            {
+                Dispatcher.ExecuteAsync(() => ShowContextMenu(x, y, hasSelection, hoveredUri), enforceNewSchedule: true);
+            }
+            else if (action == MouseAction.Paste)
+            {
+                ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Paste));
+            }
+            else if (action == MouseAction.CopySelectionOrPaste)
+            {
+                if (hasSelection)
                 {
-                    if (ViewModel.ApplicationSettings.MouseMiddleClickAction == MouseAction.ContextMenu)
-                    {
-                        ShowContextMenu(x, y, hasSelection);
-                    }
-                    else if (ViewModel.ApplicationSettings.MouseMiddleClickAction == MouseAction.Paste)
-                    {
-                        ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Paste));
-                    }
+                    ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Copy));
                 }
-                else if (mouseButton == MouseButton.Right)
+                else
                 {
-                    if (ViewModel.ApplicationSettings.MouseRightClickAction == MouseAction.ContextMenu)
-                    {
-                        ShowContextMenu(x, y, hasSelection);
-                    }
-                    else if (ViewModel.ApplicationSettings.MouseRightClickAction == MouseAction.Paste)
-                    {
-                        ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Paste));
-                    }
+                    ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Paste));
                 }
-            });
+            }
         }
 
-        void IxtermEventListener.OnSelectionChanged(string selection)
+        async void IxtermEventListener.OnSelectionChanged(string selection)
         {
-            if (ViewModel.ApplicationSettings.CopyOnSelect && !ViewModel.ShowSearchPanel)
+            if (_terminalClosed)
             {
-                _dispatcherJobs.Add(async () =>
-                {
-                    ViewModel.CopyText(selection);
-                    await ExecuteScriptAsync("term.clearSelection()");
-                });
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(selection) && ViewModel.ApplicationSettings.CopyOnSelect && !ViewModel.ShowSearchPanel)
+            {
+                await ViewModel.CopyTextAsync(selection).ConfigureAwait(false);
+                await ExecuteScriptAsync("term.clearSelection()").ConfigureAwait(false);
             }
         }
 
         void IxtermEventListener.OnTerminalResized(int columns, int rows)
         {
-            if (_connectedEvent.IsSet) // only propagate after xterm.js is finished with fitting
+            if (_terminalClosed)
             {
-                _dispatcherJobs.Add(async () => await ViewModel.Terminal.SetSize(new TerminalSize { Columns = columns, Rows = rows }).ConfigureAwait(true));
+                return;
             }
+
+            var size = new TerminalSize {Columns = columns, Rows = rows};
+
+            lock (_resizeLock)
+            {
+                if (_setSize == null)
+                {
+                    // Initialization not finished yet
+                    _requestedSize = size;
+                }
+                else
+                {
+                    ScheduleResize(size, false);
+                }
+            }
+        }
+
+        void IxtermEventListener.OnInitialized()
+        {
+            _tcsConnected.TrySetResult(null);
         }
 
         void IxtermEventListener.OnTitleChanged(string title)
         {
-            _dispatcherJobs.Add(() => ViewModel.Terminal.SetTitle(title));
+            if (_terminalClosed)
+            {
+                return;
+            }
+
+            ViewModel.Terminal.SetTitle(title);
         }
 
         private void _webView_NavigationCompleted(WebView sender, WebViewNavigationCompletedEventArgs args)
         {
             Logger.Instance.Debug("WebView navigation completed. Target: {uri}", args.Uri);
-            _navigationCompleted.Release();
+            _tcsNavigationCompleted.TrySetResult(null);
         }
 
         private void _webView_NavigationStarting(WebView sender, WebViewNavigationStartingEventArgs args)
         {
-            var bridge = new TerminalBridge(this);
-            _webView.AddWebAllowedObject("terminalBridge", bridge);
+            _terminalBridge = new TerminalBridge(this);
+            _webView.AddWebAllowedObject("terminalBridge", _terminalBridge);
         }
 
-        private void Copy_Click(object sender, RoutedEventArgs e)
+        private void _webView_NewWindowRequested(WebView sender, WebViewNewWindowRequestedEventArgs args)
         {
-            ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Copy));
+            args.Handled = true;
+            // ReSharper disable once AssignmentIsFullyDiscarded
+            _ = Launcher.LaunchUriAsync(args.Uri);
         }
 
-        private async Task CreateWebSocketServer(int port)
-        {
-            FleckLog.LogAction = (level, message, exception) =>
-            {
-                // todo: send debug to verbose
-                switch (level)
-                {
-                    case LogLevel.Info:
-                        Logger.Instance.Information(message);
-                        break;
-                    case LogLevel.Warn:
-                        Logger.Instance.Warning(message);
-                        break;
-                    case LogLevel.Error:
-                        Logger.Instance.Error(message);
-                        break;
-                }
-                if (exception != null)
-                {
-                    Logger.Instance.Error(exception, "Fleck Exception");
-                }
-            };
-
-            var webSocketUrl = "ws://127.0.0.1:" + port;
-            var webSocketServer = new WebSocketServer(webSocketUrl);
-            webSocketServer.Start(socket =>
-            {
-                _socket = socket;
-                socket.OnOpen = () =>
-                {
-                    Logger.Instance.Debug("WebSocket open");
-                    _connectedEvent.Set();
-                };
-                socket.OnMessage = message => ViewModel.Terminal.Write(Encoding.UTF8.GetBytes(message));
-            });
-
-            Logger.Instance.Debug("WebSocketServer started. Calling connectToWebSocket() now.");
-
-            await ExecuteScriptAsync($"connectToWebSocket('{webSocketUrl}');").ConfigureAwait(true);
-        }
-
-        private async Task<TerminalSize> CreateXtermView(TerminalOptions options, TerminalColors theme, IEnumerable<KeyBinding> keyBindings, SessionType sessionType)
+        private Task<TerminalSize> CreateXtermViewAsync(TerminalOptions options, TerminalColors theme, IEnumerable<KeyBinding> keyBindings)
         {
             var serializedOptions = JsonConvert.SerializeObject(options);
             var serializedTheme = JsonConvert.SerializeObject(theme);
             var serializedKeyBindings = JsonConvert.SerializeObject(keyBindings);
-            var size = await ExecuteScriptAsync($"createTerminal('{serializedOptions}', '{serializedTheme}', '{serializedKeyBindings}', '{sessionType}')").ConfigureAwait(true);
-            return JsonConvert.DeserializeObject<TerminalSize>(size);
+            return ExecuteScriptAsync(
+                    $"createTerminal('{serializedOptions}', '{serializedTheme}', '{serializedKeyBindings}')")
+                .ContinueWith(t => JsonConvert.DeserializeObject<TerminalSize>(t.Result));
         }
 
-        private Task<string> ExecuteScriptAsync(string script)
+        private async Task<string> ExecuteScriptAsync(string script)
         {
+            if (_terminalClosed)
+            {
+                return string.Empty;
+            }
+
             try
             {
-                return _webView.InvokeScriptAsync("eval", new[] { script }).AsTask();
+                var scriptTask = await Dispatcher.ExecuteAsync(() => _webView.InvokeScriptAsync("eval", new[] {script}))
+                    .ConfigureAwait(false);
+
+                
+                return await scriptTask;
             }
             catch (Exception e)
             {
-                Debug.WriteLine($"Exception while running:\n \"{script}\"\n\n {e}");
+                Logger.Instance.Error($"Exception while running:\n \"{script}\"\n\n {e}");
             }
-            return Task.FromResult(string.Empty);
+
+            return string.Empty;
         }
 
-        private IEnumerable<KeyBinding> FlattenKeyBindings(IDictionary<string, ICollection<KeyBinding>> commandKeyBindings, IEnumerable<ShellProfile> profiles)
+        private IEnumerable<KeyBinding> FlattenKeyBindings(IDictionary<string, ICollection<KeyBinding>> commandKeyBindings, IEnumerable<ShellProfile> profiles, IEnumerable<SshProfile> sshprofiles)
         {
-            return commandKeyBindings.Values.SelectMany(k => k).Concat(profiles.SelectMany(x => x.KeyBindings));
+            return commandKeyBindings.Values.SelectMany(k => k).Concat(profiles.SelectMany(x => x.KeyBindings).Concat(sshprofiles.SelectMany(x => x.KeyBindings)));
         }
 
-        private void Paste_Click(object sender, RoutedEventArgs e)
+        private void ShowContextMenu(int x, int y, bool terminalHasSelection, string hoveredUri)
         {
-            ((IxtermEventListener)this).OnKeyboardCommand(nameof(Command.Paste));
-        }
-
-        private void ShowContextMenu(int x, int y, bool terminalHasSelection)
-        {
+            ViewModel.HoveredUri = hoveredUri;
+            ViewModel.HasSelection = terminalHasSelection;
             var flyout = (MenuFlyout)_webView.ContextFlyout;
-            _copyMenuItem.IsEnabled = terminalHasSelection;
             flyout.ShowAt(_webView, new Point(x, y));
         }
 
-        private void StartMediatorTask()
+        private void Terminal_Closed(object sender, EventArgs e)
         {
-            _dispatcherJobs = new BlockingCollection<Action>();
-            var dispatcher = CoreApplication.GetCurrentView().CoreWindow.Dispatcher;
-            Task.Factory.StartNew(async () =>
+            _terminalClosed = true;
+
+            ViewModel.Terminal.Closed -= Terminal_Closed;
+            ViewModel.Terminal.OutputReceived -= Terminal_OutputReceived;
+            ViewModel.Terminal.RegisterSelectedTextCallback(null);
+
+            ViewModel.ApplicationView.ExecuteOnUiThreadAsync(() =>
             {
-                foreach (var job in _dispatcherJobs.GetConsumingEnumerable())
+                _webView.NavigationCompleted -= _webView_NavigationCompleted;
+                _webView.NavigationStarting -= _webView_NavigationStarting;
+                _webView.NewWindowRequested -= _webView_NewWindowRequested;
+
+                _webView?.Navigate(new Uri("about:blank"));
+                Root.Children.Remove(_webView);
+                _webView = null;
+                
+                if (Window.Current.Content is Frame frame && frame.Content is Page mainPage)
                 {
-                    try
+                    if (mainPage.Resources["TerminalViewModelToViewConverter"] is TerminalViewModelToViewConverter converter)
                     {
-                        await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => job.Invoke());
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.WriteLine(e);
+                        converter.RemoveTerminal(ViewModel);
                     }
                 }
-            }, TaskCreationOptions.LongRunning);
-        }
-
-        private async void Terminal_Closed(object sender, EventArgs e)
-        {
-            await ViewModel.ApplicationView.RunOnDispatcherThread(() =>
-            {
-                ViewModel.Terminal.OutputReceived -= Terminal_OutputReceived;
-                ViewModel.Terminal.Closed -= Terminal_Closed;
-                _webView?.Navigate(new Uri("about:blank"));
-                _webView = null;
             });
         }
 
         private void Terminal_OutputReceived(object sender, byte[] e)
         {
-            _socket.Send(Encoding.UTF8.GetString(e));
+            if (_terminalClosed)
+            {
+                return;
+            }
+
+            lock (_resizeLock)
+            {
+                if (_outputBlockedBuffer != null)
+                {
+                    _outputBlockedBuffer.Write(e, 0, e.Length);
+
+                    return;
+                }
+            }
+
+            OnOutput?.Invoke(this, e);
         }
 
         void IxtermEventListener.OnError(string error)
         {
             Logger.Instance.Error(error);
+        }
+
+        public void OnInput(byte[] data)
+        {
+            if (_terminalClosed)
+            {
+                return;
+            }
+
+            ViewModel.Terminal.Write(data);
+        }
+
+        public void Dispose()
+        {
+            _outputBlockedBuffer?.Dispose();
+        }
+
+        public void Paste(string text) => OnPaste?.Invoke(this, text);
+
+        private async Task<bool> StartShellProcessAsync(TerminalSize size)
+        {
+            var sessionType = ViewModel.ShellProfile.UseConPty &&
+                ViewModel.ApplicationView.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 7)
+                    ? SessionType.ConPty
+                    : SessionType.WinPty;
+
+            var response = await ViewModel.Terminal.StartShellProcessAsync(ViewModel.ShellProfile, size, sessionType, ViewModel.XtermBufferState).ConfigureAwait(false);
+            if (!response.Success)
+            {
+                await Dispatcher.ExecuteAsync(async () =>
+                        await ViewModel.DialogService.ShowMessageDialogAsync("Error", response.Error, DialogButton.OK))
+                    .ConfigureAwait(false);
+
+                ViewModel.Terminal.ReportLauchFailed();
+                return false;
+            }
+            return true;
         }
     }
 }

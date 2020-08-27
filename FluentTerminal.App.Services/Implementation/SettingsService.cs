@@ -5,6 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using FluentTerminal.App.Services.Utilities;
+using FluentTerminal.Models.Messages;
+using GalaSoft.MvvmLight.Messaging;
 
 namespace FluentTerminal.App.Services.Implementation
 {
@@ -12,12 +15,14 @@ namespace FluentTerminal.App.Services.Implementation
     {
         public const string CurrentThemeKey = "CurrentTheme";
         public const string DefaultShellProfileKey = "DefaultShellProfile";
+        public const string DefaultSshProfileKey = "DefaultSshProfile";
 
         private readonly IDefaultValueProvider _defaultValueProvider;
         private readonly IApplicationDataContainer _keyBindings;
         private readonly IApplicationDataContainer _localSettings;
         private readonly IApplicationDataContainer _roamingSettings;
         private readonly IApplicationDataContainer _shellProfiles;
+        private readonly IApplicationDataContainer _sshProfiles;
         private readonly IApplicationDataContainer _themes;
 
         public SettingsService(IDefaultValueProvider defaultValueProvider, ApplicationDataContainers containers)
@@ -29,6 +34,8 @@ namespace FluentTerminal.App.Services.Implementation
             _themes = containers.Themes;
             _keyBindings = containers.KeyBindings;
             _shellProfiles = containers.ShellProfiles;
+            _sshProfiles = containers.SshProfiles;
+
 
             foreach (var theme in _defaultValueProvider.GetPreInstalledThemes())
             {
@@ -55,7 +62,9 @@ namespace FluentTerminal.App.Services.Implementation
                 KeyBindings = GetCommandKeyBindings(),
                 TerminalOptions = GetTerminalOptions(),
                 Themes = new List<TerminalTheme>(),
-                Profiles = new List<ShellProfile>()
+                Profiles = new List<ShellProfile>(),
+                SshProfiles = new List<SshProfile>(),
+                DefaultSettings = GetDefaultSettings(),
             };
 
             foreach (var theme in GetThemes().Where(x => !x.PreInstalled))
@@ -63,12 +72,26 @@ namespace FluentTerminal.App.Services.Implementation
                 config.Themes.Add(theme);
             }
 
-            foreach (var profile in GetShellProfiles().Where(x => !x.PreInstalled))
+            foreach (var profile in GetShellProfiles())
             {
                 config.Profiles.Add(profile);
             }
 
-            return JsonConvert.SerializeObject(config);
+            foreach (var profile in GetSshProfiles())
+            {
+                config.SshProfiles.Add(profile);
+            }
+
+            return JsonConvert.SerializeObject(config, PreserveDictionaryKeyCaseContractResolver.SerializerSettings);
+        }
+
+        private Dictionary<string, string> GetDefaultSettings()
+        {
+            return new Dictionary<string, string>
+            {
+                [DefaultShellProfileKey] = GetDefaultShellProfileId().ToString(),
+                [CurrentThemeKey] = GetCurrentThemeId().ToString(),
+            };
         }
 
         public void ImportSettings(string serializedSettings)
@@ -79,7 +102,9 @@ namespace FluentTerminal.App.Services.Implementation
                 KeyBindings = new Dictionary<string, ICollection<KeyBinding>>(),
                 Themes = new List<TerminalTheme>(),
                 Profiles = new List<ShellProfile>(),
-                TerminalOptions = GetTerminalOptions()
+                SshProfiles = new List<SshProfile>(),
+                TerminalOptions = GetTerminalOptions(),
+                DefaultSettings = new Dictionary<string, string>(),
             };
 
             JsonConvert.PopulateObject(serializedSettings, config);
@@ -103,48 +128,57 @@ namespace FluentTerminal.App.Services.Implementation
                 SaveTheme(theme, existingTheme != null);
             }
 
-            // Can't create pre-installed profiles
-            foreach (var profile in config.Profiles.Where(x => !x.PreInstalled))
+            foreach (var profile in config.Profiles)
             {
                 var existingProfile = GetShellProfile(profile.Id);
-                var isNew = existingProfile.Equals(default(ShellProfile));
+                var isNew = existingProfile == default;
 
-                // You can only edit certain parts of preinstalled profiles
                 if (!isNew && existingProfile.PreInstalled)
                 {
-                    existingProfile.WorkingDirectory = profile.WorkingDirectory;
-                    existingProfile.Arguments = profile.Arguments;
-                    existingProfile.TabThemeId = profile.TabThemeId;
-                    existingProfile.TerminalThemeId = profile.TerminalThemeId;
-                    existingProfile.LineEndingTranslation = profile.LineEndingTranslation;
-                    existingProfile.KeyBindings = profile.KeyBindings;
-                    SaveShellProfile(profile, isNew);
+                    // those cannot be edited
+                    profile.Name = existingProfile.Name;
+                    profile.Location = existingProfile.Location;
+
+                    SaveShellProfile(profile, false);
                     continue;
                 }
                 SaveShellProfile(profile, isNew);
             }
 
+            foreach (var profile in config.SshProfiles)
+            {
+                var existingProfile = GetSshProfile(profile.Id);
+                var isNew = existingProfile == default;
+
+                SaveSshProfile(profile, isNew);
+            }
+
             SaveTerminalOptions(config.TerminalOptions);
+
+            if (config.DefaultSettings.ContainsKey(DefaultShellProfileKey))
+            {
+                SaveDefaultShellProfileId(new Guid(config.DefaultSettings[DefaultShellProfileKey]));
+            }
+
+            if (config.DefaultSettings.ContainsKey(CurrentThemeKey))
+            {
+                SaveCurrentThemeId(new Guid(config.DefaultSettings[CurrentThemeKey]));
+            }
         }
-
-        public event EventHandler<ApplicationSettings> ApplicationSettingsChanged;
-
-        public event EventHandler<TerminalTheme> ThemeAdded;
-        public event EventHandler<Guid> CurrentThemeChanged;
-        public event EventHandler<Guid> ThemeDeleted;
-
-        public event EventHandler KeyBindingsChanged;
-
-        public event EventHandler<ShellProfile> ShellProfileAdded;
-        public event EventHandler<Guid> ShellProfileDeleted;
-
-        public event EventHandler<TerminalOptions> TerminalOptionsChanged;
 
         public void DeleteShellProfile(Guid id)
         {
             _shellProfiles.Delete(id.ToString());
-            ShellProfileDeleted?.Invoke(this, id);
+            Messenger.Default.Send(new ShellProfileDeletedMessage(id));
         }
+
+        public void DeleteSshProfile(Guid id)
+        {
+            _sshProfiles.Delete(id.ToString());
+            Messenger.Default.Send(new ShellProfileDeletedMessage(id));
+            Messenger.Default.Send(new KeyBindingsChangedMessage());
+        }
+
 
         public void DeleteTheme(Guid id)
         {
@@ -159,7 +193,7 @@ namespace FluentTerminal.App.Services.Implementation
                 }
             }
 
-            ThemeDeleted?.Invoke(this, id);
+            Messenger.Default.Send(new ThemeDeletedMessage(id));
         }
 
         public ApplicationSettings GetApplicationSettings()
@@ -206,6 +240,10 @@ namespace FluentTerminal.App.Services.Implementation
         {
             return _shellProfiles.ReadValueFromJson(id.ToString(), default(ShellProfile));
         }
+        public SshProfile GetSshProfile(Guid id)
+        {
+            return _sshProfiles.ReadValueFromJson(id.ToString(), default(SshProfile));
+        }
 
         public Guid GetDefaultShellProfileId()
         {
@@ -229,7 +267,43 @@ namespace FluentTerminal.App.Services.Implementation
 
         public IEnumerable<ShellProfile> GetShellProfiles()
         {
-            return _shellProfiles.GetAll().Select(x => JsonConvert.DeserializeObject<ShellProfile>((string)x)).ToList();
+            return _shellProfiles.GetAll().Select(x => JsonConvert.DeserializeObject<ShellProfile>((string) x))
+                .Select(MoshBackwardCompatibilityFixProfile);
+        }
+
+        public IEnumerable<SshProfile> GetSshProfiles()
+        {
+            return _sshProfiles.GetAll().Select(x => JsonConvert.DeserializeObject<SshProfile>((string) x))
+                .Select(MoshBackwardCompatibilityFixProfile).Cast<SshProfile>();
+        }
+
+        public IEnumerable<ShellProfile> GetAllProfiles()
+        {
+            return GetShellProfiles().Union(GetSshProfiles());
+        }
+
+        private ShellProfile MoshBackwardCompatibilityFixProfile(ShellProfile profile)
+        {
+            var fixedProfile = MoshBackwardCompatibility.FixProfile(profile);
+
+            if (ReferenceEquals(fixedProfile, profile))
+            {
+                // Nothing changed
+                return fixedProfile;
+            }
+
+            if (fixedProfile is SshProfile sshProfile)
+            {
+                DeleteSshProfile(profile.Id);
+                SaveSshProfile(sshProfile);
+            }
+            else
+            {
+                DeleteShellProfile(profile.Id);
+                SaveShellProfile(fixedProfile);
+            }
+
+            return fixedProfile;
         }
 
         public IEnumerable<TabTheme> GetTabThemes()
@@ -259,25 +333,32 @@ namespace FluentTerminal.App.Services.Implementation
                 _keyBindings.WriteValueAsJson(command.ToString(), _defaultValueProvider.GetDefaultKeyBindings(command));
             }
 
-            KeyBindingsChanged?.Invoke(this, System.EventArgs.Empty);
+            Messenger.Default.Send(new KeyBindingsChangedMessage());
         }
 
         public void SaveApplicationSettings(ApplicationSettings applicationSettings)
         {
             _roamingSettings.WriteValueAsJson(nameof(ApplicationSettings), applicationSettings);
-            ApplicationSettingsChanged?.Invoke(this, applicationSettings);
+            Messenger.Default.Send(new ApplicationSettingsChangedMessage(applicationSettings.Clone()));
+        }
+
+        public void NotifyApplicationSettingsChanged(ApplicationSettings applicationSettings)
+        {
+            Messenger.Default.Send(new ApplicationSettingsChangedMessage(applicationSettings.Clone()));
         }
 
         public void SaveCurrentThemeId(Guid id)
         {
             _roamingSettings.SetValue(CurrentThemeKey, id);
 
-            CurrentThemeChanged?.Invoke(this, id);
+            Messenger.Default.Send(new CurrentThemeChangedMessage(id));
         }
 
         public void SaveDefaultShellProfileId(Guid id)
         {
             _localSettings.SetValue(DefaultShellProfileKey, id);
+
+            Messenger.Default.Send(new DefaultShellProfileChangedMessage(id));
         }
 
         public void SaveKeyBindings(string command, ICollection<KeyBinding> keyBindings)
@@ -288,7 +369,7 @@ namespace FluentTerminal.App.Services.Implementation
             }
 
             _keyBindings.WriteValueAsJson(enumValue.ToString(), keyBindings);
-            KeyBindingsChanged?.Invoke(this, System.EventArgs.Empty);
+            Messenger.Default.Send(new KeyBindingsChangedMessage());
         }
 
         public void SaveShellProfile(ShellProfile shellProfile, bool newShell = false)
@@ -296,18 +377,39 @@ namespace FluentTerminal.App.Services.Implementation
             _shellProfiles.WriteValueAsJson(shellProfile.Id.ToString(), shellProfile);
 
             // When saving the shell profile, we also need to update keybindings for everywhere.
-            KeyBindingsChanged?.Invoke(this, System.EventArgs.Empty);
+            Messenger.Default.Send(new KeyBindingsChangedMessage());
 
             if (newShell)
             {
-                ShellProfileAdded?.Invoke(this, shellProfile);
+                Messenger.Default.Send(new ShellProfileAddedMessage(shellProfile));
+            }
+            else
+            {
+                Messenger.Default.Send(new ShellProfileChangedMessage(shellProfile));
+            }
+        }
+
+        public void SaveSshProfile(SshProfile sshProfile, bool newShell = false)
+        {
+            _sshProfiles.WriteValueAsJson(sshProfile.Id.ToString(), sshProfile);
+
+            // When saving the shell profile, we also need to update keybindings for everywhere.
+            Messenger.Default.Send(new KeyBindingsChangedMessage());
+
+            if (newShell)
+            {
+                Messenger.Default.Send(new ShellProfileAddedMessage(sshProfile));
+            }
+            else
+            {
+                Messenger.Default.Send(new ShellProfileChangedMessage(sshProfile));
             }
         }
 
         public void SaveTerminalOptions(TerminalOptions terminalOptions)
         {
             _roamingSettings.WriteValueAsJson(nameof(TerminalOptions), terminalOptions);
-            TerminalOptionsChanged?.Invoke(this, terminalOptions);
+            Messenger.Default.Send(new TerminalOptionsChangedMessage(terminalOptions));
         }
 
         public void SaveTheme(TerminalTheme theme, bool newTheme = false)
@@ -316,12 +418,12 @@ namespace FluentTerminal.App.Services.Implementation
 
             if (theme.Id == GetCurrentThemeId())
             {
-                CurrentThemeChanged?.Invoke(this, theme.Id);
+                Messenger.Default.Send(new CurrentThemeChangedMessage(theme.Id));
             }
 
             if (newTheme)
             {
-                ThemeAdded?.Invoke(this, theme);
+                Messenger.Default.Send(new ThemeAddedMessage(theme));
             }
         }
     }

@@ -90,7 +90,8 @@ namespace FluentTerminal.App.ViewModels.Settings
                 Id = Guid.NewGuid(),
                 PreInstalled = false,
                 Name = "New profile",
-                KeyBindings = new List<KeyBinding>()
+                KeyBindings = new List<KeyBinding>(),
+                UseConPty = _settingsService.GetApplicationSettings().UseConPty
             };
 
             AddShellProfile(shellProfile);
@@ -98,20 +99,18 @@ namespace FluentTerminal.App.ViewModels.Settings
 
         private void Clone(ShellProfileViewModel shellProfile)
         {
-            var cloned = new ShellProfile(shellProfile.Model)
-            {
-                Id = Guid.NewGuid(),
-                PreInstalled = false,
-                Name = $"Copy of {shellProfile.Name}"
-            };
+            var cloned = shellProfile.ProfileVm.Model.Clone();
+
+            cloned.Id = Guid.NewGuid();
+            cloned.PreInstalled = false;
+            cloned.Name = $"Copy of {shellProfile.Name}";
+            cloned.KeyBindings = new List<KeyBinding>();
 
             AddShellProfile(cloned);
         }
 
         private void AddShellProfile(ShellProfile shellProfile)
         {
-            _settingsService.SaveShellProfile(shellProfile, true);
-
             var viewModel = new ShellProfileViewModel(shellProfile, _settingsService, _dialogService, _fileSystemService, _applicationView, _defaultValueProvider, true);
             viewModel.EditCommand.Execute(null);
             viewModel.SetAsDefault += OnShellProfileSetAsDefault;

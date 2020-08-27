@@ -1,20 +1,19 @@
-﻿using FluentTerminal.App.Services;
-using GalaSoft.MvvmLight;
+﻿using GalaSoft.MvvmLight;
 using System;
+using Windows.UI.Xaml;
 
 namespace FluentTerminal.App.ViewModels
 {
     public class OverlayViewModel : ViewModelBase
     {
-        private readonly IDispatcherTimer _overlayTimer;
+        private readonly DispatcherTimer _overlayTimer;
         private bool _showOverlay;
         private string _overlayContent;
 
-        public OverlayViewModel(IDispatcherTimer dispatcherTimer)
+        // Important! The constructor has to be called from the UI thread.
+        public OverlayViewModel()
         {
-            _overlayTimer = dispatcherTimer;
-            _overlayTimer.Interval = new TimeSpan(0, 0, 2);
-            _overlayTimer.Tick += OnResizeOverlayTimerFinished;
+            _overlayTimer = new DispatcherTimer {Interval = new TimeSpan(0, 0, 2)};
         }
 
         public bool ShowOverlay
@@ -37,13 +36,16 @@ namespace FluentTerminal.App.ViewModels
             if (_overlayTimer.IsEnabled)
             {
                 _overlayTimer.Stop();
+                _overlayTimer.Tick -= OnResizeOverlayTimerFinished;
             }
             _overlayTimer.Start();
+            _overlayTimer.Tick += OnResizeOverlayTimerFinished;
         }
 
         private void OnResizeOverlayTimerFinished(object sender, object e)
         {
             _overlayTimer.Stop();
+            _overlayTimer.Tick -= OnResizeOverlayTimerFinished;
             ShowOverlay = false;
         }
 

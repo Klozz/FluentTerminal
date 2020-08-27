@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
+// ReSharper disable InconsistentNaming
 
 namespace FluentTerminal.App.Services.Implementation
 {
@@ -14,7 +15,7 @@ namespace FluentTerminal.App.Services.Implementation
     {
         private const byte Opacity30Percent = 77;
 
-        public IEnumerable<string> SupportedFileTypes { get; } = new string[] { ".itermcolors" };
+        public IEnumerable<string> SupportedFileTypes { get; } = new[] { ".itermcolors" };
 
         private static class ITermThemeKeys
         {
@@ -36,7 +37,7 @@ namespace FluentTerminal.App.Services.Implementation
             public const string Ansi15Color = "Ansi 15 Color";
 
             public const string BackgroundColor = "Background Color";
-            public const string BoldColor = "Bold Color";
+            //public const string BoldColor = "Bold Color";
             public const string CursorColor = "Cursor Color";
             public const string CursorTextColor = "Cursor Text Color";
             public const string ForegroundColor = "Foreground Color";
@@ -51,7 +52,7 @@ namespace FluentTerminal.App.Services.Implementation
             public const string RedComponent = "Red Component";
         }
 
-        public async Task<TerminalTheme> Parse(string fileName, Stream fileContent)
+        public Task<TerminalTheme> Parse(string fileName, Stream fileContent)
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -65,13 +66,13 @@ namespace FluentTerminal.App.Services.Implementation
 
             var node = PList.Load(fileContent) as DictionaryNode ?? throw new ParseThemeException("Root node was not a dictionary.");
 
-            return new TerminalTheme
+            return Task.FromResult(new TerminalTheme
             {
                 Name = Path.GetFileNameWithoutExtension(fileName),
                 Colors = GetColors(node),
                 Id = Guid.NewGuid(),
                 PreInstalled = false
-            };
+            });
         }
 
         private TerminalColors GetColors(DictionaryNode themeDictionary)
@@ -83,6 +84,8 @@ namespace FluentTerminal.App.Services.Implementation
                 Cursor = GetColorString(themeDictionary[ITermThemeKeys.CursorColor]),
                 CursorAccent = GetColorString(themeDictionary[ITermThemeKeys.CursorTextColor]),
                 Selection = GetColorString(themeDictionary[ITermThemeKeys.SelectionColor], Opacity30Percent),
+                SelectionForeground = GetColorString(themeDictionary[ITermThemeKeys.SelectedTextColor]),
+                SelectionBackground = GetColorString(themeDictionary[ITermThemeKeys.SelectionColor]),
                 Black = GetColorString(themeDictionary[ITermThemeKeys.Ansi0Color]),
                 Red = GetColorString(themeDictionary[ITermThemeKeys.Ansi1Color]),
                 Green = GetColorString(themeDictionary[ITermThemeKeys.Ansi2Color]),
@@ -110,8 +113,6 @@ namespace FluentTerminal.App.Services.Implementation
             var green = dictionaryNode[ITermThemeColorKeys.GreenComponent] as RealNode ?? throw new ParseThemeException("Green node value was not a real number");
             var blue = dictionaryNode[ITermThemeColorKeys.BlueComponent] as RealNode ?? throw new ParseThemeException("Blue node value was not a real number");
 
-            var color = $"#{alpha:X2}{GetByteValue(red):X2}{GetByteValue(green):X2}{GetByteValue(blue):X2}";
-
             if (alpha == byte.MaxValue)
             {
                 return $"#{GetByteValue(red):X2}{GetByteValue(green):X2}{GetByteValue(blue):X2}";
@@ -132,6 +133,31 @@ namespace FluentTerminal.App.Services.Implementation
         private static string ToDoubleString(byte alpha)
         {
             return (alpha / 256.0).ToString(CultureInfo.InvariantCulture);
+        }
+
+        public Task<ExportedTerminalTheme> Import(string fileName, Stream fileContent)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                throw new ArgumentNullException(nameof(fileName));
+            }
+
+            if (fileContent == null)
+            {
+                throw new ArgumentNullException(nameof(fileContent));
+            }
+
+            var node = PList.Load(fileContent) as DictionaryNode ?? throw new ParseThemeException("Root node was not a dictionary.");
+
+            var terminalTheme = new TerminalTheme
+            {
+                Name = Path.GetFileNameWithoutExtension(fileName),
+                Colors = GetColors(node),
+                Id = Guid.NewGuid(),
+                PreInstalled = false
+            };
+
+            return Task.FromResult(new ExportedTerminalTheme(terminalTheme, string.Empty));
         }
     }
 }

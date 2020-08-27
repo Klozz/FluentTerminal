@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using FluentTerminal.Models.Enums;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace FluentTerminal.Models
 {
@@ -11,14 +11,15 @@ namespace FluentTerminal.Models
         /// <summary>
         /// Replace all instances of anything resembling a newline, treating pairs of \r\n in either order as a single linebreak.
         /// </summary>
-        public static Regex NewlinePattern = new Regex(@"\n\r|\r\n|\r|\n", RegexOptions.Compiled);
+        public static readonly Regex NewlinePattern = new Regex(@"\n\r|\r\n|\r|\n", RegexOptions.Compiled);
+        public const int CurrentMigrationVersion = 1;
 
         public ShellProfile()
         {
 
         }
 
-        public ShellProfile(ShellProfile other)
+        protected ShellProfile(ShellProfile other)
         {
             Id = other.Id;
             PreInstalled = other.PreInstalled;
@@ -28,64 +29,58 @@ namespace FluentTerminal.Models
             WorkingDirectory = other.WorkingDirectory;
             TabThemeId = other.TabThemeId;
             TerminalThemeId = other.TerminalThemeId;
-            LineEndingTranslation = other.LineEndingTranslation;
+            UseConPty = other.UseConPty;
+            UseBuffer = other.UseBuffer;
             KeyBindings = other.KeyBindings.Select(x => new KeyBinding(x)).ToList();
         }
 
         public Guid Id { get; set; }
         public bool PreInstalled { get; set; }
         public string Name { get; set; }
-        public virtual string Arguments { get; set; }
-        public virtual string Location { get; set; }
+        public string Arguments { get; set; }
+        public string Location { get; set; }
         public string WorkingDirectory { get; set; }
         public int TabThemeId { get; set; }
-        public LineEndingStyle LineEndingTranslation { get; set; }
-        public Dictionary<string, string> EnvironmentVariables { get; } = new Dictionary<string, string>();
+        public Dictionary<string, string> EnvironmentVariables { get; set; } = new Dictionary<string, string>();
+        public bool UseConPty { get; set; }
+        public bool UseBuffer { get; set; } = true;
 
-        public string TranslateLineEndings(string content)
-        {
-            switch (LineEndingTranslation)
-            {
-                case LineEndingStyle.ToCR:
-                    return NewlinePattern.Replace(content, "\r");
-                case LineEndingStyle.ToCRLF:
-                    return NewlinePattern.Replace(content, "\r\n");
-                case LineEndingStyle.ToLF:
-                    return NewlinePattern.Replace(content, "\n");
-                case LineEndingStyle.DoNotModify:
-                default:
-                    return content;
-            }
-        }
+        public int MigrationVersion { get; set; } = CurrentMigrationVersion;
+
+        /// <summary>
+        /// For attaching a data to the profile. This property doesn't get serialized nor cloned.
+        /// </summary>
+        [JsonIgnore]
+        public object Tag { get; set; }
 
         public Guid TerminalThemeId { get; set; }
         public ICollection<KeyBinding> KeyBindings { get; set; } = new List<KeyBinding>();
 
-        public override bool Equals(object obj)
+        public virtual bool EqualTo(ShellProfile other)
         {
-            if (obj is ShellProfile other)
+            if (other == null)
             {
-                return other.Id.Equals(Id)
-                    && other.PreInstalled.Equals(PreInstalled)
-                    && other.Name.Equals(Name)
-                    && other.Arguments.Equals(Arguments)
-                    && other.Location.Equals(Location)
-                    && other.WorkingDirectory.Equals(WorkingDirectory)
-                    && other.TabThemeId.Equals(TabThemeId)
-                    && other.TerminalThemeId.Equals(TerminalThemeId)
-                    && other.LineEndingTranslation == LineEndingTranslation
-                    && other.KeyBindings.SequenceEqual(KeyBindings);
+                return false;
             }
-            return false;
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return other.Id.Equals(Id)
+                   && other.PreInstalled.Equals(PreInstalled)
+                   && other.Name.NullableEqualTo(Name)
+                   && other.Arguments.NullableEqualTo(Arguments)
+                   && other.Location.NullableEqualTo(Location)
+                   && other.WorkingDirectory.NullableEqualTo(WorkingDirectory)
+                   && other.TabThemeId.Equals(TabThemeId)
+                   && other.TerminalThemeId.Equals(TerminalThemeId)
+                   && other.UseConPty == UseConPty
+                   && other.UseBuffer == UseBuffer
+                   && other.KeyBindings.SequenceEqual(KeyBindings);
         }
 
-        /// <summary>
-        /// Checks the profile for errors and returns string describing the found errors, if any.
-        /// Returns null if no errors found.
-        /// </summary>
-        public virtual string ValidateAndGetErrors()
-        {
-            return null;
-        }
+        public virtual ShellProfile Clone() => new ShellProfile(this);
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Windows.Storage;
+using FluentTerminal.App.Services.Utilities;
 
 namespace FluentTerminal.App.Services.Adapters
 {
@@ -18,6 +19,11 @@ namespace FluentTerminal.App.Services.Adapters
         public void Delete(string key)
         {
             _applicationDataContainer.Values.Remove(key);
+        }
+
+        public void Clear()
+        {
+            _applicationDataContainer.Values.Clear();
         }
 
         public IEnumerable<object> GetAll()
@@ -51,7 +57,8 @@ namespace FluentTerminal.App.Services.Adapters
 
         public void WriteValueAsJson<T>(string name, T value)
         {
-            _applicationDataContainer.Values[name] = JsonConvert.SerializeObject(value);
+            _applicationDataContainer.Values[name] = JsonConvert.SerializeObject(value,
+                PreserveDictionaryKeyCaseContractResolver.SerializerSettings);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using FluentTerminal.Models;
+﻿using FluentTerminal.App.Services.Exceptions;
+using FluentTerminal.Models;
 using FluentTerminal.Models.Enums;
 using FluentTerminal.Models.Requests;
 using FluentTerminal.Models.Responses;
@@ -6,44 +7,52 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Windows.Foundation.Collections;
+using FluentTerminal.App.Services.Utilities;
 
 namespace FluentTerminal.App.Services.Implementation
 {
     public class TrayProcessCommunicationService : ITrayProcessCommunicationService
     {
+        #region Static
+
+        private static string _userName;
+        private static string _sshConfigDir;
+        private static readonly Dictionary<string, string> CommandPaths = new Dictionary<string, string>();
+        private static readonly Dictionary<string, string> CommandErrors = new Dictionary<string, string>();
+
+        private static ValueSet CreateMessage(IMessage content)
+        {
+            return new ValueSet
+            {
+                [MessageKeys.Type] = content.Identifier,
+                [MessageKeys.Content] = JsonConvert.SerializeObject(content,
+                    PreserveDictionaryKeyCaseContractResolver.SerializerSettings)
+            };
+        }
+
+        #endregion Static
+
         private readonly ISettingsService _settingsService;
         private IAppServiceConnection _appServiceConnection;
-        private readonly Dictionary<int, Action<byte[]>> _terminalOutputHandlers;
-        private int _nextTerminalId = 0;
+        private readonly Dictionary<byte, Action<byte[]>> _terminalOutputHandlers;
+        // ReSharper disable once RedundantDefaultMemberInitializer
+        private byte _nextTerminalId = 0;
 
         public event EventHandler<TerminalExitStatus> TerminalExited;
 
         public TrayProcessCommunicationService(ISettingsService settingsService)
         {
             _settingsService = settingsService;
-            _terminalOutputHandlers = new Dictionary<int, Action<byte[]>>();
+            _terminalOutputHandlers = new Dictionary<byte, Action<byte[]>>();
         }
 
-        public int GetNextTerminalId()
+        public byte GetNextTerminalId()
         {
             return _nextTerminalId++;
         }
 
-        public async Task<GetAvailablePortResponse> GetAvailablePort()
-        {
-            var request = new GetAvailablePortRequest();
-
-            var responseMessage = await _appServiceConnection.SendMessageAsync(CreateMessage(request));
-            var response = JsonConvert.DeserializeObject<GetAvailablePortResponse>(responseMessage[MessageKeys.Content]);
-
-            Logger.Instance.Debug("Received GetAvailablePortResponse: {@response}", response);
-
-            return response;
-        }
-
-        private string _userName;
-
-        public async Task<string> GetUserName()
+        public async Task<string> GetUserNameAsync()
         {
             if (!string.IsNullOrEmpty(_userName))
             {
@@ -51,44 +60,97 @@ namespace FluentTerminal.App.Services.Implementation
                 return _userName;
             }
 
-            GetUserNameResponse response;
+            var response = await GetResponseAsync<StringValueResponse>(new GetUserNameRequest()).ConfigureAwait(false);
 
-            // No need to crash for username, so try/catch
-            try
+            if (response.Success)
             {
-                var responseMessage = await _appServiceConnection.SendMessageAsync(CreateMessage(new GetUserNameRequest()));
-                response = JsonConvert.DeserializeObject<GetUserNameResponse>(responseMessage[MessageKeys.Content]);
+                _userName = response.Value;
             }
-            catch (Exception e)
-            {
-                Logger.Instance.Error(e, "Error while trying to get username.");
-
-                return null;
-            }
-
-            Logger.Instance.Debug("Received GetUserNameResponse: {@response}", response);
-
-            _userName = response.UserName;
 
             return _userName;
         }
 
         public async Task SaveTextFileAsync(string path, string content)
         {
-            IDictionary<string, string> responseMessage =
-                await _appServiceConnection.SendMessageAsync(CreateMessage(new SaveTextFileRequest
-                    {Path = path, Content = content}));
-
-            CommonResponse response =
-                JsonConvert.DeserializeObject<CommonResponse>(responseMessage[MessageKeys.Content]);
+            var response =
+                await GetResponseAsync<CommonResponse>(new SaveTextFileRequest {Path = path, Content = content})
+                    .ConfigureAwait(false);
 
             if (!response.Success)
             {
-                throw new Exception(string.IsNullOrEmpty(response.Error) ? "Failed to save the file." : response.Error);
+                throw new SaveTextFileException(string.IsNullOrEmpty(response.Error)
+                    ? "Failed to save the file."
+                    : response.Error);
             }
         }
 
-        public async Task<CreateTerminalResponse> CreateTerminal(int id, TerminalSize size, ShellProfile shellProfile, SessionType sessionType)
+        public async Task<string> ReadTextFileAsync(string path)
+        {
+            var response = await GetResponseAsync<StringValueResponse>(new ReadTextFileRequest { Path = path }).ConfigureAwait(false);
+
+            if (!response.Success)
+            {
+                throw new ReadTextFileException(string.IsNullOrWhiteSpace(response.Error) ? "Failed to read the file." : response.Error);
+            }
+
+            return response.Value;
+        }
+
+        public async Task<string> GetSshConfigDirAsync()
+        {
+            if (!string.IsNullOrEmpty(_sshConfigDir))
+            {
+                return _sshConfigDir;
+            }
+
+            var response =
+                await GetResponseAsync<GetSshConfigFolderResponse>(new GetSshConfigFolderRequest
+                    { IncludeContent = false }).ConfigureAwait(false);
+
+            if (response.Success)
+            {
+                _sshConfigDir = response.Path;
+            }
+
+            return _sshConfigDir;
+        }
+
+        public async Task<string[]> GetFilesFromSshConfigDirAsync()
+        {
+            var response =
+                await GetResponseAsync<GetSshConfigFolderResponse>(new GetSshConfigFolderRequest
+                    {IncludeContent = true}).ConfigureAwait(false);
+
+            if (response.Success)
+            {
+                _sshConfigDir = response.Path;
+
+                return response.Files;
+            }
+
+            return null;
+        }
+
+        public async Task<bool> CheckFileExistsAsync(string path)
+        {
+            var response = await GetResponseAsync<CommonResponse>(new CheckFileExistsRequest {Path = path})
+                .ConfigureAwait(false);
+
+            return response.Success;
+        }
+
+        public Task MuteTerminalAsync(bool mute)
+        {
+            return _appServiceConnection.SendMessageAsync(CreateMessage(new MuteTerminalRequest {Mute = mute}));
+        }
+
+        public void UpdateSettings(ApplicationSettings settings)
+        {
+            _appServiceConnection.SendMessageAsync(CreateMessage(new UpdateSettingsRequest { Settings = settings }));
+        }
+
+        public async Task<CreateTerminalResponse> CreateTerminalAsync(byte id, TerminalSize size, ShellProfile shellProfile,
+            SessionType sessionType)
         {
             var request = new CreateTerminalRequest
             {
@@ -100,12 +162,17 @@ namespace FluentTerminal.App.Services.Implementation
 
             Logger.Instance.Debug("Sending CreateTerminalRequest: {@request}", request);
 
-            var responseMessage = await _appServiceConnection.SendMessageAsync(CreateMessage(request));
-            var response = JsonConvert.DeserializeObject<CreateTerminalResponse>(responseMessage[MessageKeys.Content]);
+            var response = await GetResponseAsync<CreateTerminalResponse>(request).ConfigureAwait(false);
 
             Logger.Instance.Debug("Received CreateTerminalResponse: {@response}", response);
 
             return response;
+        }
+
+        public Task<PauseTerminalOutputResponse> PauseTerminalOutputAsync(byte id, bool pause)
+        {
+            return GetResponseAsync<PauseTerminalOutputResponse>(
+                new PauseTerminalOutputRequest {Id = id, Pause = pause});
         }
 
         public void Initialize(IAppServiceConnection appServiceConnection)
@@ -114,73 +181,77 @@ namespace FluentTerminal.App.Services.Implementation
             _appServiceConnection.MessageReceived += OnMessageReceived;
         }
 
-        private void OnMessageReceived(object sender, IDictionary<string, string> e)
+        private void OnMessageReceived(object sender, IDictionary<string, object> e)
         {
-            var messageType = e[MessageKeys.Type];
+            var messageType = (byte)e[MessageKeys.Type];
             var messageContent = e[MessageKeys.Content];
 
-            if (messageType == nameof(DisplayTerminalOutputRequest))
+            switch (messageType)
             {
-                var request = JsonConvert.DeserializeObject<DisplayTerminalOutputRequest>(messageContent);
+                case Constants.TerminalBufferRequestIdentifier:
+                    var terminalId = (byte)e[MessageKeys.TerminalId];
 
-                if (_terminalOutputHandlers.ContainsKey(request.TerminalId))
-                {
-                    _terminalOutputHandlers[request.TerminalId].Invoke(request.Output);
-                }
-                else
-                {
-                    Logger.Instance.Error("Received output for unknown terminal Id {id}", request.TerminalId);
-                }
-            }
-            else if (messageType == nameof(TerminalExitedRequest))
-            {
-                var request = JsonConvert.DeserializeObject<TerminalExitedRequest>(messageContent);
-                Logger.Instance.Debug("Received TerminalExitedRequest: {@request}", request);
+                    if (_terminalOutputHandlers.ContainsKey(terminalId))
+                    {
+                        _terminalOutputHandlers[terminalId].Invoke((byte[])messageContent);
+                    }
+                    else
+                    {
+                        Logger.Instance.Error("Received output for unknown terminal Id {id}", terminalId);
+                    }
+                    break;
+                case (byte) MessageIdentifiers.TerminalExitedRequest:
+                    var request = JsonConvert.DeserializeObject<TerminalExitedRequest>((string)messageContent);
+                    Logger.Instance.Debug("Received TerminalExitedRequest: {@request}", request);
 
-                TerminalExited?.Invoke(this, request.ToStatus());
+                    TerminalExited?.Invoke(this, request.ToStatus());
+                    break;
+                default:
+                    Logger.Instance.Error("Received unknown message type: {messageType}", messageType);
+                    break;
             }
         }
 
-        public Task ResizeTerminal(int id, TerminalSize size)
+        public Task ResizeTerminalAsync(byte id, TerminalSize size)
         {
-            var request = new ResizeTerminalRequest
-            {
-                TerminalId = id,
-                NewSize = size
-            };
-
-            return _appServiceConnection.SendMessageAsync(CreateMessage(request));
+            return _appServiceConnection.SendMessageAsync(CreateMessage(new ResizeTerminalRequest
+                {TerminalId = id, NewSize = size}));
         }
 
-        public void SubscribeForTerminalOutput(int terminalId, Action<byte[]> callback)
+        public void SubscribeForTerminalOutput(byte terminalId, Action<byte[]> callback)
         {
             _terminalOutputHandlers[terminalId] = callback;
         }
 
-        public Task UpdateToggleWindowKeyBindings()
+        public void UnsubscribeFromTerminalOutput(byte id)
+        {
+            if (_terminalOutputHandlers.ContainsKey(id))
+            {
+                _terminalOutputHandlers.Remove(id);
+            }
+        }
+
+        public Task UpdateToggleWindowKeyBindingsAsync()
         {
             var keyBindings = _settingsService.GetCommandKeyBindings()[nameof(Command.ToggleWindow)];
 
-            var request = new SetToggleWindowKeyBindingsRequest
-            {
-                KeyBindings = keyBindings
-            };
-
-            return _appServiceConnection.SendMessageAsync(CreateMessage(request));
+            return _appServiceConnection.SendMessageAsync(CreateMessage(new SetToggleWindowKeyBindingsRequest
+                {KeyBindings = keyBindings}));
         }
 
-        public Task Write(int id, byte[] data)
+        public Task WriteAsync(byte id, byte[] data)
         {
-            var request = new WriteDataRequest
+            var message = new ValueSet
             {
-                TerminalId = id,
-                Data = data
+                [MessageKeys.Type] = Constants.TerminalBufferRequestIdentifier,
+                [MessageKeys.TerminalId] = id,
+                [MessageKeys.Content] = data
             };
 
-            return _appServiceConnection.SendMessageAsync(CreateMessage(request));
+            return _appServiceConnection.SendMessageAsync(message);
         }
 
-        public Task CloseTerminal(int terminalId)
+        public Task CloseTerminalAsync(byte terminalId)
         {
             var request = new TerminalExitedRequest(terminalId, -1);
 
@@ -189,13 +260,53 @@ namespace FluentTerminal.App.Services.Implementation
             return _appServiceConnection.SendMessageAsync(CreateMessage(request));
         }
 
-        private IDictionary<string, string> CreateMessage(object content)
+        public async Task<string> GetCommandPathAsync(string command)
         {
-            return new Dictionary<string, string>
+            if (string.IsNullOrWhiteSpace(command))
             {
-                [MessageKeys.Type] = content.GetType().Name,
-                [MessageKeys.Content] = JsonConvert.SerializeObject(content)
-            };
+                throw new ArgumentException("Input value is null or empty.", nameof(command));
+            }
+
+            command = command.Trim();
+
+            var commandLower = command.ToLowerInvariant();
+
+            if (CommandPaths.TryGetValue(commandLower, out var path))
+            {
+                return path;
+            }
+
+            if (CommandErrors.TryGetValue(commandLower, out var error))
+            {
+                throw new Exception(error);
+            }
+
+            var response = await GetResponseAsync<StringValueResponse>(new GetCommandPathRequest {Command = command})
+                .ConfigureAwait(false);
+
+            if (response.Success)
+            {
+                CommandPaths[commandLower] = response.Value;
+
+                return response.Value;
+            }
+
+            CommandErrors[commandLower] = response.Error;
+
+            throw new Exception(response.Error);
+        }
+
+        public Task QuitApplicationAsync()
+        {
+            return _appServiceConnection.SendMessageAsync(CreateMessage(new QuitApplicationRequest()));
+        }
+
+        private async Task<T> GetResponseAsync<T>(IMessage request)
+        {
+            var messageResponse =
+                await _appServiceConnection.SendMessageAsync(CreateMessage(request)).ConfigureAwait(false);
+
+            return JsonConvert.DeserializeObject<T>((string)messageResponse[MessageKeys.Content]);
         }
     }
 }

@@ -6,12 +6,13 @@
         NextTab,
         PreviousTab,
         NewTab,
-        ConfigurableNewTab,
+        NewWindow,
         NewSshTab,
+        NewSshWindow,
+        NewCustomCommandTab, 
+        NewCustomCommandWindow,
         ChangeTabTitle,
         CloseTab,
-        NewWindow,
-        ConfigurableNewWindow,
         ShowSettings,
         Copy,
         Paste,
@@ -28,6 +29,11 @@
         SwitchToTerm6,
         SwitchToTerm7,
         SwitchToTerm8,
-        SwitchToTerm9
+        SwitchToTerm9,
+        DuplicateTab,
+        ReconnectTab,
+        IncreaseFontSize,
+        DecreaseFontSize,
+        ResetFontSize
     }
 }

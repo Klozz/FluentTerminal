@@ -1,0 +1,1069 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AboutDialog.Title" xml:space="preserve">
+    <value>Hakkında</value>
+    <comment>MainPage.xaml</comment>
+  </data>
+  <data name="Background.Content" xml:space="preserve">
+    <value>Arkaplan</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="TabTheme.Blue" xml:space="preserve">
+    <value>Mavi</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Kapat</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="ConfirmWindowClosing.Header" xml:space="preserve">
+    <value>Pencereleri kapatmadan önce sor</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="ConfirmTabClosing.Header" xml:space="preserve">
+    <value>Sekmeleri kaptmadan önce sor</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="Color.Text" xml:space="preserve">
+    <value>Renk</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="ColorInactiveTabs.Text" xml:space="preserve">
+    <value>Aktif olmayan sekme rengi</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="Command.Copy" xml:space="preserve">
+    <value>Kopyala</value>
+    <comment>XtermTerminalView.xaml.cs</comment>
+  </data>
+  <data name="CustomTitle.Header" xml:space="preserve">
+    <value>Özel sekme başlığını başlık çubuğunda da göster</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="EditTitle.Text" xml:space="preserve">
+    <value>Başlığı Düzenle</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="General.Text" xml:space="preserve">
+    <value>Genel</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="TabTheme.Green" xml:space="preserve">
+    <value>Yeşil</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="IndicatorOutput.Header" xml:space="preserve">
+    <value>Aktif olmayan pencerelerde yeni çıktı olursa beni bilgilendir</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="NeedRelaunch.Text" xml:space="preserve">
+    <value>Ayarları uygulamak için yeniden başlatma gereklidir</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="NewTab.Text" xml:space="preserve">
+    <value>Yeni sekme</value>
+    <comment>MainPage.xaml</comment>
+  </data>
+  <data name="TabTheme.None" xml:space="preserve">
+    <value>Hiçbiri</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="ONTA_Tabs.Content" xml:space="preserve">
+    <value>Sekmeler</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="ONTA_Windows.Content" xml:space="preserve">
+    <value>Pencereler</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="OpenNewTerminalAs.Text" xml:space="preserve">
+    <value>Yeni terminalleri şu şekilde aç:</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="TabTheme.Orange" xml:space="preserve">
+    <value>Turuncu</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="Command.Paste" xml:space="preserve">
+    <value>Yapıştır</value>
+    <comment>XtermTerminalView.xaml.cs</comment>
+  </data>
+  <data name="TabTheme.Purple" xml:space="preserve">
+    <value>Mor</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="TabTheme.Red" xml:space="preserve">
+    <value>Kırmızı</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="Restore.Label" xml:space="preserve">
+    <value>Varsayılana Ayarla</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="RunOnStartup.Header" xml:space="preserve">
+    <value>Başlangıçta çalıştır
+</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="Setting" xml:space="preserve">
+    <value>Ayarlar</value>
+    <comment>SettingsPage.xaml.cs</comment>
+  </data>
+  <data name="Settings.Text" xml:space="preserve">
+    <value>Ayarlar</value>
+    <comment>MainPage.xaml</comment>
+  </data>
+  <data name="SystemTray.Header" xml:space="preserve">
+    <value>Sistem tepsisinde göster</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="TabsPostion.Text" xml:space="preserve">
+    <value>Üzerindeki sekmeleri göster</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="TabTheme.Teal" xml:space="preserve">
+    <value>Teal</value>
+    <comment>TabBar.xaml</comment>
+  </data>
+  <data name="TP_Bottom.Content" xml:space="preserve">
+    <value>Alt</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="TP_Top.Content" xml:space="preserve">
+    <value>Üst</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="Underline.Content" xml:space="preserve">
+    <value>Alt Çizgi</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="UnderlineTab.Header" xml:space="preserve">
+    <value>Seçili sekmenin altını çiz</value>
+    <comment>GeneralSettings.xaml</comment>
+  </data>
+  <data name="Setting_About.Content" xml:space="preserve">
+    <value>Hakkında</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Setting_General.Content" xml:space="preserve">
+    <value>Genel</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Setting_Keybindings.Content" xml:space="preserve">
+    <value>Kısa yollar</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Setting_Mouse.Content" xml:space="preserve">
+    <value>Mouse</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Setting_Profiles.Content" xml:space="preserve">
+    <value>Profiller</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Setting_Terminal.Content" xml:space="preserve">
+    <value>Terminal</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Setting_Themes.Content" xml:space="preserve">
+    <value>Temalar</value>
+    <comment>SettingsPage.xaml</comment>
+  </data>
+  <data name="Add.Content" xml:space="preserve">
+    <value>Ekle</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="Arguments.Header" xml:space="preserve">
+    <value>Argümanlar</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="BackgroundOpacity.Header" xml:space="preserve">
+    <value>Arkaplan saydamlığı</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="BlinkingCursor.Header" xml:space="preserve">
+    <value>Yanıp sönen imleç</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="BoldText.Header" xml:space="preserve">
+    <value>Bold yazı</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="CancelAppBarButton.Label" xml:space="preserve">
+    <value>İptal</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="CheckingUpdates.Text" xml:space="preserve">
+    <value>Güncellemeler kontrol ediliyor...</value>
+    <comment>About.xaml</comment>
+  </data>
+  <data name="CheckUpdates.Label" xml:space="preserve">
+    <value>Güncellemeleri kontrol et</value>
+    <comment>About.xaml</comment>
+  </data>
+  <data name="ClickColorEdit.Text" xml:space="preserve">
+    <value>Rengi düzenlemek için tıkla</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="CloneAppBarButton.Label" xml:space="preserve">
+    <value>Klonla</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ColorPalette.Text" xml:space="preserve">
+    <value>Renk paleti</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="CopiedNotification.Header" xml:space="preserve">
+    <value>Yazı kopyalandı bildirimi</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="CopyOnSelect.Header" xml:space="preserve">
+    <value>Seçileni kopyala</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="CreateProfile.Text" xml:space="preserve">
+    <value>Yeni oluştur</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="CurrentVersion.Text" xml:space="preserve">
+    <value>Mevcut versiyon</value>
+    <comment>About.xaml</comment>
+  </data>
+  <data name="CursorBar.Content" xml:space="preserve">
+    <value>Çizgi</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="CursorBlock.Content" xml:space="preserve">
+    <value>Kalın çizgi</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="CursorStyle.Text" xml:space="preserve">
+    <value>İmleç stili</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="CursorUnderline.Content" xml:space="preserve">
+    <value>Alt Çizgi</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="DeleteAppBarButton.Label" xml:space="preserve">
+    <value>Sil</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="LineEndingStyle.DoNotModify" xml:space="preserve">
+    <value>Satır sonlarını değiştirme</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="EditAppBarButton.Label" xml:space="preserve">
+    <value>Düzenle</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ExportAppBarButton.Label" xml:space="preserve">
+    <value>Dışa aktar</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="FontFamily.Header" xml:space="preserve">
+    <value>Font ailesi</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="FontSize.Header" xml:space="preserve">
+    <value>Font Boyutu</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="ImportTheme.Text" xml:space="preserve">
+    <value>İçe Aktar</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="KeyboardShortcut.Header" xml:space="preserve">
+    <value>Klavye kısayolları</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="KeyboardShortcut1.Text" xml:space="preserve">
+    <value>Klavye kısayolları</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="LatestVersion.Text" xml:space="preserve">
+    <value>Son veriyon</value>
+    <comment>About.xaml</comment>
+  </data>
+  <data name="License.Text" xml:space="preserve">
+    <value>Lisans</value>
+    <comment>About.xaml</comment>
+  </data>
+  <data name="LineEndingMode.Header" xml:space="preserve">
+    <value>Satır sonu çeviri modu</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="LineEndingModeOnPaste.Text" xml:space="preserve">
+    <value>Yapıştırıldığında satır sonu çeviri modu:</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="MiddleButtonAction.Text" xml:space="preserve">
+    <value>Orta tuş eylemi</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="Mouse.Text" xml:space="preserve">
+    <value>Mouse</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="MouseContextMenu.Content" xml:space="preserve">
+    <value>Sağ tık menü</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="MouseNothing.Content" xml:space="preserve">
+    <value>Hiçbir şey</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="MousePaste.Content" xml:space="preserve">
+    <value>Yapıştır</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="NewTheme.Text" xml:space="preserve">
+    <value>Yeni oluştur</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="Padding.Header" xml:space="preserve">
+    <value>Padding</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="ProfileName.Header" xml:space="preserve">
+    <value>İsim</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="Profiles.Text" xml:space="preserve">
+    <value>Profiller</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ProfileTheme.Header" xml:space="preserve">
+    <value>Tema</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ReleaseNotes.Text" xml:space="preserve">
+    <value>Sürüm notları</value>
+    <comment>About.xaml</comment>
+  </data>
+  <data name="RightButtonAction.Text" xml:space="preserve">
+    <value>Sağ tuş eylemi</value>
+    <comment>MouseSettings.xaml</comment>
+  </data>
+  <data name="SaveAppBarButton.Label" xml:space="preserve">
+    <value>Kaydet</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ScrollbackLimit.Header" xml:space="preserve">
+    <value>Geri kaydırma sınırı</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="ScrollBarAuto.Content" xml:space="preserve">
+    <value>Otomatik gizleme</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="ScrollBarHidden.Content" xml:space="preserve">
+    <value>Gizli</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="ScrollbarStyle.Text" xml:space="preserve">
+    <value>Kaydırma çubuğu stili</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="ScrollBarVisible.Content" xml:space="preserve">
+    <value>Görünür</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="SetActiveAppBarButton.Label" xml:space="preserve">
+    <value>Aktifleştir</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="SetDefaultAppBarButton.Label" xml:space="preserve">
+    <value>Varsayılana ayarla</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ShellLocation.Header" xml:space="preserve">
+    <value>Çalıştırılabilir shell konumu</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="TabColor.Header" xml:space="preserve">
+    <value>Sekme rengi</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="Terminal.Text" xml:space="preserve">
+    <value>Terminal</value>
+    <comment>TerminalSettings.xaml</comment>
+  </data>
+  <data name="Theme.Text" xml:space="preserve">
+    <value>Tema:</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="ThemeAuthor.Header" xml:space="preserve">
+    <value>Yazar</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="ThemeName.Header" xml:space="preserve">
+    <value>Ad</value>
+    <comment>ThemeSettings.xaml</comment>
+  </data>
+  <data name="LineEndingStyle.ToCR" xml:space="preserve">
+    <value>Satır sonlarını CR&apos;ye dönüştürme</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="LineEndingStyle.ToCRLF" xml:space="preserve">
+    <value>Satır sonlarını CR + LF&apos;ye dönüştürme</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="LineEndingStyle.ToLF" xml:space="preserve">
+    <value>Satır sonlarını LF&apos;ye dönüştür</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="WorkingDir.Header" xml:space="preserve">
+    <value>Çalışma dizini</value>
+    <comment>ShellProfileSettings.xaml</comment>
+  </data>
+  <data name="ConfirmCloseTab" xml:space="preserve">
+    <value>&quot;{0}&quot; sekmesini kapatmak istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmCloseWindow" xml:space="preserve">
+    <value>Bu pencereyi kapatmak istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmDeleteKeybindings" xml:space="preserve">
+    <value>Bu tuş takımını silmek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmDeleteTheme" xml:space="preserve">
+    <value>Bu temayı silmek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmDiscardChanges" xml:space="preserve">
+    <value>Tüm değişiklikleri silmek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmRestoreGeneralSettings" xml:space="preserve">
+    <value>Genel ayarları geri yüklemek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmRestoreKeybindings" xml:space="preserve">
+    <value>Varsayılan tuş bağlantılarını geri yüklemek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmRestoreMouseSettings" xml:space="preserve">
+    <value>Fare ayarlarını geri yüklemek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmRestoreProfile" xml:space="preserve">
+    <value>Bu profili geri yüklemek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ConfirmRestoreTerminalOptions" xml:space="preserve">
+    <value>Varsayılan terminal seçeneklerini geri yüklemek istediğinizden emin misiniz?</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="DisabledByPolicy" xml:space="preserve">
+    <value>Politika tarafından devre dışı bırakıldı.</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="DisabledByUser" xml:space="preserve">
+    <value>Kullanıcı tarafından devre dışı bırakıldı. Lütfen Görev Yöneticisi&apos;nin Başlangıç sekmesinde yeniden etkinleştirin.</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="EditTitleString" xml:space="preserve">
+    <value>Başlığı Düzenle</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Hata</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ErrorString1" xml:space="preserve">
+    <value>Aşağıdaki hata nedeniyle işlem tamamlanamıyor:</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="ImportThemeFailed" xml:space="preserve">
+    <value>Tema içe aktarılamadı</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="NoSuitableParserFound" xml:space="preserve">
+    <value>Uygun ayrıştırıcı bulunamadı</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="PleaseConfirm" xml:space="preserve">
+    <value>Lütfen onaylayın</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="KeybindingDialogTitle.Text" xml:space="preserve">
+    <value>Tuş bağlantınızı şimdi girin</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>Tamam</value>
+  </data>
+  <data name="ResetBtn.Content" xml:space="preserve">
+    <value>Sıfırla</value>
+  </data>
+  <data name="TextCopied" xml:space="preserve">
+    <value>Metin kopyalandı</value>
+    <comment>ViewModel</comment>
+  </data>
+  <data name="AddAppBarButton.Label" xml:space="preserve">
+    <value>Ekle</value>
+    <comment>KeyBindingSettings.xaml</comment>
+  </data>
+  <data name="Command.ChangeTabTitle" xml:space="preserve">
+    <value>Sekme başlığını değiştir</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.Clear" xml:space="preserve">
+    <value>Temizle</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.CloseTab" xml:space="preserve">
+    <value>Sekmeyi kapat</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Keybindings.Text" xml:space="preserve">
+    <value>Keybindings</value>
+    <comment>KeyBindingSettings.xaml</comment>
+  </data>
+  <data name="Delete.Content" xml:space="preserve">
+    <value>Sil</value>
+    <comment>KeyBindingsView.xaml</comment>
+  </data>
+  <data name="KeyBindingsViewEdit.Content" xml:space="preserve">
+    <value>Düzenle</value>
+    <comment>KeyBindingsView.xaml</comment>
+  </data>
+  <data name="Command.NewTab" xml:space="preserve">
+    <value>Yeni Sekme</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.NewWindow" xml:space="preserve">
+    <value>Yeni Pencere</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.NextTab" xml:space="preserve">
+    <value>Sonraki sekme</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.PasteWithoutNewlines" xml:space="preserve">
+    <value>Yeni satır olmadan yapıştırma</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.PreviousTab" xml:space="preserve">
+    <value>Önceki sekme</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.Search" xml:space="preserve">
+    <value>Arama</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SelectAll" xml:space="preserve">
+    <value>Tümünü Seç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.ShowSettings" xml:space="preserve">
+    <value>Ayarları göster</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm1" xml:space="preserve">
+    <value>Terminal 1&apos;e geçin</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm2" xml:space="preserve">
+    <value>Terminal 2&apos;ye geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm3" xml:space="preserve">
+    <value>Terminal 3&apos;e geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm4" xml:space="preserve">
+    <value>Terminal 4&apos;e geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm5" xml:space="preserve">
+    <value>Terminal 5&apos;e geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm6" xml:space="preserve">
+    <value>Terminal 6&apos;ya geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm7" xml:space="preserve">
+    <value>Terminal 7&apos;ye geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm8" xml:space="preserve">
+    <value>Terminal 8&apos;e geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.SwitchToTerm9" xml:space="preserve">
+    <value>Terminal 9&apos;a geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.ToggleFullScreen" xml:space="preserve">
+    <value>Tam ekrana geç</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Command.ToggleWindow" xml:space="preserve">
+    <value>Pencereyi aç / kapat</value>
+    <comment>Command</comment>
+  </data>
+  <data name="NewSshTab.Text" xml:space="preserve">
+    <value>Yeni uzak (remote) sekmesi</value>
+  </data>
+  <data name="Command.NewSshTab" xml:space="preserve">
+    <value>Yeni SSH sekmesi</value>
+  </data>
+  <data name="SshInfoDialog.Title" xml:space="preserve">
+    <value>SSH Bilgisi</value>
+  </data>
+  <data name="UserTextBox.PlaceholderText" xml:space="preserve">
+    <value>kullanıcı</value>
+  </data>
+  <data name="HostTextBox.PlaceholderText" xml:space="preserve">
+    <value>evsahibi</value>
+  </data>
+  <data name="PortTextBox.PlaceholderText" xml:space="preserve">
+    <value>Liman</value>
+  </data>
+  <data name="IdentityFileTextBox.PlaceholderText" xml:space="preserve">
+    <value>Kimlik dosyası yolu</value>
+  </data>
+  <data name="BrowseButton.Content" xml:space="preserve">
+    <value>Araştır</value>
+  </data>
+  <data name="UseMoshCheckBox.Content" xml:space="preserve">
+    <value>Mosh Kullan</value>
+  </data>
+  <data name="AdvancedExpander.Header" xml:space="preserve">
+    <value>ileri</value>
+  </data>
+  <data name="MoshPorts.Text" xml:space="preserve">
+    <value>Mosh limanları:</value>
+  </data>
+  <data name="SaveShortcutButton.Content" xml:space="preserve">
+    <value>Kısayolu Kaydet</value>
+  </data>
+  <data name="NeedsToRestart.Text" xml:space="preserve">
+    <value>Bu değişikliğin geçerli olması için uygulamanın yeniden başlatılması gerekiyor.</value>
+  </data>
+  <data name="InvalidInput" xml:space="preserve">
+    <value>Geçersiz Giriş</value>
+  </data>
+  <data name="PortCannotBeZero" xml:space="preserve">
+    <value>Bağlantı noktası 0 olamaz.</value>
+  </data>
+  <data name="UserAndHostMandatory" xml:space="preserve">
+    <value>Kullanıcı ve ana bilgisayar zorunlu alanlardır.</value>
+  </data>
+  <data name="SshConnectionInfoValidationResult.UsernameEmpty" xml:space="preserve">
+    <value>Kullanıcı adı boş bırakılamaz.</value>
+  </data>
+  <data name="SshConnectionInfoValidationResult.HostEmpty" xml:space="preserve">
+    <value>Ana makine boş olamaz.</value>
+  </data>
+  <data name="SshConnectionInfoValidationResult.SshPortZeroOrNegative" xml:space="preserve">
+    <value>SSH bağlantı noktası sıfırdan büyük olmalıdır.</value>
+  </data>
+  <data name="SshConnectionInfoValidationResult.MoshPortZeroOrNegative" xml:space="preserve">
+    <value>Mosh limanı sıfır olamaz.</value>
+  </data>
+  <data name="SshConnectionInfoValidationResult.MoshPortRangeInvalid" xml:space="preserve">
+    <value>Mosh bağlantı noktası aralığı geçersiz.</value>
+  </data>
+  <data name="Yes.Text" xml:space="preserve">
+    <value>Evet</value>
+  </data>
+  <data name="No.Text" xml:space="preserve">
+    <value>Hayır</value>
+  </data>
+  <data name="Language.Header" xml:space="preserve">
+    <value>Dil</value>
+  </data>
+  <data name="None.Text" xml:space="preserve">
+    <value>Yok</value>
+  </data>
+  <data name="NewOutput.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Yeni çıktı</value>
+  </data>
+  <data name="ExitedWithError.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Hatadan çıkıldı</value>
+  </data>
+  <data name="ConfirmDeleteProfile" xml:space="preserve">
+    <value>Bu profili silmek istediğinizden emin misiniz?</value>
+  </data>
+  <data name="Command.NewSshWindow" xml:space="preserve">
+    <value>Yeni SSH penceresi</value>
+  </data>
+  <data name="Setting_SShProfiles.Content" xml:space="preserve">
+    <value>SSH Profilleri</value>
+  </data>
+  <data name="SshInfoDialog_TabColor.Text" xml:space="preserve">
+    <value>Sekme rengi:</value>
+  </data>
+  <data name="UseConPty" xml:space="preserve">
+    <value>ConPty kullanın</value>
+  </data>
+  <data name="Username.Header" xml:space="preserve">
+    <value>Kullanıcı adı</value>
+  </data>
+  <data name="MoshPortFrom.Header" xml:space="preserve">
+    <value>Limandan</value>
+  </data>
+  <data name="MoshPortTo.Header" xml:space="preserve">
+    <value>limana</value>
+  </data>
+  <data name="MoshPortRange.Text" xml:space="preserve">
+    <value>Mosh liman aralığı</value>
+  </data>
+  <data name="Authenticate" xml:space="preserve">
+    <value>kimlik doğrulaması</value>
+  </data>
+  <data name="SettingsExported" xml:space="preserve">
+    <value>Ayarlar dosyaya aktarıldı</value>
+  </data>
+  <data name="SettingsImported" xml:space="preserve">
+    <value>Ayarlar dosyadan içe aktarıldı</value>
+  </data>
+  <data name="SshConnectionInfoValidationResult.IdentityFileDoesNotExist" xml:space="preserve">
+    <value>Dosya tanımlama yok</value>
+  </data>
+  <data name="AutoFallbackToWindowsUsername.Header" xml:space="preserve">
+    <value>Birini belirtmeyen SSH URL&apos;lerini açarken Windows kullanıcı adını kullanın</value>
+  </data>
+  <data name="UseMoshByDefault.Header" xml:space="preserve">
+    <value>SSH bağlantıları için varsayılan olarak Mosh</value>
+  </data>
+  <data name="RTrimCopiedLines.Header" xml:space="preserve">
+    <value>Kopyalanan satırları sağ kırpma</value>
+  </data>
+  <data name="QuickSshDefault.Header" xml:space="preserve">
+    <value>Varsayılan olarak hızlı SSH kullan</value>
+  </data>
+  <data name="InvalidCommand" xml:space="preserve">
+    <value>Geçersiz komut.</value>
+  </data>
+  <data name="LocationCantBeEmpty" xml:space="preserve">
+    <value>Konum boş bırakılamaz.</value>
+  </data>
+  <data name="MuteTerminalBeeps.Header" xml:space="preserve">
+    <value>Terminal bip seslerini kapatma</value>
+  </data>
+  <data name="CommandTextBox.PlaceholderText" xml:space="preserve">
+    <value>Bir komut girin (örn. &apos;Ssh kullanıcı adı @ host&apos;)</value>
+  </data>
+  <data name="CommandLine.Header" xml:space="preserve">
+    <value>komuta</value>
+  </data>
+  <data name="UnsupportedCommand" xml:space="preserve">
+    <value>Desteklenmeyen komut:</value>
+  </data>
+  <data name="CommandArgumentsMandatory" xml:space="preserve">
+    <value>Komut bağımsız değişkenleri eksik.</value>
+  </data>
+  <data name="QuickCommandDialog.Title" xml:space="preserve">
+    <value>Hızlı Başlatma</value>
+  </data>
+  <data name="Command.NewCustomCommandTab" xml:space="preserve">
+    <value>Yeni hızlı başlatma sekmesi</value>
+  </data>
+  <data name="Command.NewCustomCommandWindow" xml:space="preserve">
+    <value>Yeni hızlı başlatma penceresi</value>
+  </data>
+  <data name="NewQuickTab.Text" xml:space="preserve">
+    <value>Yeni hızlı sekme</value>
+  </data>
+  <data name="FileNotFound" xml:space="preserve">
+    <value>Dosya bulunamadı:</value>
+  </data>
+  <data name="InvalidLink" xml:space="preserve">
+    <value>Geçersiz link.</value>
+  </data>
+  <data name="DropTabHere" xml:space="preserve">
+    <value>Sekmeyi buraya bırakın</value>
+  </data>
+  <data name="CloseLeft.Text" xml:space="preserve">
+    <value>Soldaki sekmeleri kapat</value>
+  </data>
+  <data name="CloseOther.Text" xml:space="preserve">
+    <value>Diğer sekmeleri kapat</value>
+  </data>
+  <data name="CloseRight.Text" xml:space="preserve">
+    <value>Sağdaki sekmeleri kapat</value>
+  </data>
+  <data name="Command.DuplicateTab" xml:space="preserve">
+    <value>Yinelenen sekme</value>
+  </data>
+  <data name="Command.ReconnectTab" xml:space="preserve">
+    <value>Reconnect tab</value>
+    <comment>Command</comment>
+  </data>
+  <data name="Duplicate.Text" xml:space="preserve">
+    <value>Çiftleme</value>
+  </data>
+  <data name="DuplicateEnvironmentVariable" xml:space="preserve">
+    <value>Aynı ada sahip iki ortam değişkeni tanımlanamıyor.</value>
+  </data>
+  <data name="EmptyEnvironmentVariableName" xml:space="preserve">
+    <value>Adsız bir ortam değişkeni tanımlanamıyor.</value>
+  </data>
+  <data name="EnvironmentVariables.Text" xml:space="preserve">
+    <value>Ortam Değişkenleri</value>
+  </data>
+  <data name="CloseSearchPanel.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Arama panelini kapat</value>
+  </data>
+  <data name="FindNext.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Sonraki Bul</value>
+  </data>
+  <data name="FindPrevious.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Öncekini bul</value>
+  </data>
+  <data name="SearchTextBox.PlaceholderText" xml:space="preserve">
+    <value>Arama terimini gir</value>
+  </data>
+  <data name="Search.Text" xml:space="preserve">
+    <value>Arama</value>
+  </data>
+  <data name="PrintableOutputOnly.Content" xml:space="preserve">
+    <value>Yalnızca yazdırılabilir çıktı</value>
+  </data>
+  <data name="EnableLogging.Header" xml:space="preserve">
+    <value>Hata ayıklama için günlük çıktısı</value>
+  </data>
+  <data name="WordSeparator.Header" xml:space="preserve">
+    <value>Kelime ayırıcı karakterler</value>
+  </data>
+  <data name="Recent.Text" xml:space="preserve">
+    <value>Son</value>
+  </data>
+  <data name="NewTab_Description" xml:space="preserve">
+    <value>Varsayılan profili yeni bir sekmede açar.</value>
+  </data>
+  <data name="NewSshTab_Description" xml:space="preserve">
+    <value>Yeni bir sekmede yeni bir SSH veya Mosh oturumu açar.</value>
+  </data>
+  <data name="NewQuickTab_Description" xml:space="preserve">
+    <value>&quot;Hızlı Başlatma&quot; iletişim kutusunu açar ve oturumu yeni bir sekmede başlatır.</value>
+  </data>
+  <data name="Settings_Description" xml:space="preserve">
+    <value>Ayarlar penceresini açar.</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+    <value>Uygulama hakkında temel bilgiler.</value>
+  </data>
+  <data name="Recent_Description" xml:space="preserve">
+    <value>Yakın zamanda açılan oturumlar.</value>
+  </data>
+  <data name="MenuItem_DefaultProfile_Description" xml:space="preserve">
+    <value>Varsayılan profile göre yeni terminal oturumu başlatır.</value>
+  </data>
+  <data name="MenuItem_Remote_Text" xml:space="preserve">
+    <value>Uzaktan Bağlantı ...</value>
+  </data>
+  <data name="MenuItem_Remote_Description" xml:space="preserve">
+    <value>Yeni bir SSH veya Mosh terminal oturumu başlatmak için bir iletişim kutusu açar.</value>
+  </data>
+  <data name="MenuItem_QuickLaunch_Text" xml:space="preserve">
+    <value>Hızlı Başlat ...</value>
+  </data>
+  <data name="MenuItem_QuickLaunch_Description" xml:space="preserve">
+    <value>Yeni bir terminal oturumu başlatmak için bir &quot;Hızlı Başlatma&quot; iletişim kutusu açar.</value>
+  </data>
+  <data name="MenuItem_NewWindow_Text" xml:space="preserve">
+    <value>Yeni Pencere</value>
+  </data>
+  <data name="MenuItem_NewTab_Text" xml:space="preserve">
+    <value>Yeni Sekme</value>
+  </data>
+  <data name="MenuItem_NewTab_Description" xml:space="preserve">
+    <value>Yeni bir sekmede bir oturum başlatır.</value>
+  </data>
+  <data name="MenuItem_NewWindow_Description" xml:space="preserve">
+    <value>Bir oturumu yeni bir pencerede başlatır.</value>
+  </data>
+  <data name="AppMenuType.Text" xml:space="preserve">
+    <value>Uygulama menü türü</value>
+  </data>
+  <data name="AppMenuType_Flat.Content" xml:space="preserve">
+    <value>Düz, onurlandırma &quot;Yeni terminalleri farklı aç&quot; ayarı</value>
+  </data>
+  <data name="AppMenuType_Cascading.Content" xml:space="preserve">
+    <value>&quot;Yeni Sekme&quot; / &quot;Yeni Pencere&quot; basamaklı</value>
+  </data>
+  <data name="Quit.Text" xml:space="preserve">
+    <value>çıkmak</value>
+  </data>
+  <data name="Quit.Description" xml:space="preserve">
+    <value>Akıcı Terminalden Çık</value>
+  </data>
+  <data name="EnabledByPolicy" xml:space="preserve">
+    <value>Politika tarafından etkinleştirildi.</value>
+  </data>
+  <data name="BackgroundImage.Content" xml:space="preserve">
+    <value>Arka plan görüntüsü</value>
+  </data>
+  <data name="AcrylicBackground.Header" xml:space="preserve">
+    <value>Akrilik arka plan kullanın</value>
+  </data>
+  <data name="ConfirmDeleteBackgroundImage" xml:space="preserve">
+    <value>Bu arka plan resmini silmek istediğinizden emin misiniz?</value>
+  </data>
+  <data name="Colors.Text" xml:space="preserve">
+    <value>Renkler</value>
+  </data>
+  <data name="BrightColors.Text" xml:space="preserve">
+    <value>Parlak renkler</value>
+  </data>
+  <data name="CopyLink" xml:space="preserve">
+    <value>Bağlantıyı kopyala</value>
+  </data>
+  <data name="SearchWithRegex.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Regex</value>
+  </data>
+  <data name="SearchWholeWord.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Tüm dünya</value>
+  </data>
+  <data name="SearchCaseSensitive.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Büyük/Küçük harfe duyarlı</value>
+  </data>
+  <data name="MouseCopySelectionOrPaste.Content" xml:space="preserve">
+    <value>Seçimi kopyala veya yapıştır</value>
+  </data>
+  <data name="UseBuffer" xml:space="preserve">
+    <value>Akıllı arabellek kullan</value>
+  </data>
+  <data name="RestartSession.Content" xml:space="preserve">
+    <value>Yeniden başlat</value>
+  </data>
+  <data name="SessionDisconnected.Text" xml:space="preserve">
+    <value>Oturum bağlantısı kesildi.</value>
+  </data>
+  <data name="Command.IncreaseFontSize" xml:space="preserve">
+    <value>Yazı tipi boyutunu büyüt</value>
+  </data>
+  <data name="Command.DecreaseFontSize" xml:space="preserve">
+    <value>Yazı tipi boyutunu küçült</value>
+  </data>
+  <data name="Command.ResetFontSize" xml:space="preserve">
+    <value>Yazı tipi boyutu ayarını sıfırla</value>
+  </data>
+</root>

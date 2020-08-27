@@ -14,20 +14,17 @@ namespace FluentTerminal.App.ViewModels.Settings
 {
     public class KeyBindingsPageViewModel : ViewModelBase
     {
-        private readonly IDefaultValueProvider _defaultValueProvider;
         private readonly IDialogService _dialogService;
         private readonly ISettingsService _settingsService;
         private readonly ITrayProcessCommunicationService _trayProcessCommunicationService;
-        private IDictionary<string, ICollection<KeyBinding>> _keyBindings;
 
-        public KeyBindingsPageViewModel(ISettingsService settingsService, IDialogService dialogService, IDefaultValueProvider defaultValueProvider, ITrayProcessCommunicationService trayProcessCommunicationService)
+        public KeyBindingsPageViewModel(ISettingsService settingsService, IDialogService dialogService, ITrayProcessCommunicationService trayProcessCommunicationService)
         {
             _settingsService = settingsService;
             _dialogService = dialogService;
-            _defaultValueProvider = defaultValueProvider;
             _trayProcessCommunicationService = trayProcessCommunicationService;
-            RestoreDefaultsCommand = new RelayCommand(async () => await RestoreDefaults().ConfigureAwait(false));
-            AddCommand = new RelayCommand<string>(async command => await Add(command).ConfigureAwait(false));
+            RestoreDefaultsCommand = new RelayCommand(async () => await RestoreDefaultsAsync().ConfigureAwait(false));
+            AddCommand = new RelayCommand<string>(async command => await AddAsync(command).ConfigureAwait(false));
 
             Initialize(_settingsService.GetCommandKeyBindings());
         }
@@ -36,12 +33,12 @@ namespace FluentTerminal.App.ViewModels.Settings
         public ObservableCollection<KeyBindingsViewModel> KeyBindings { get; } = new ObservableCollection<KeyBindingsViewModel>();
         public RelayCommand RestoreDefaultsCommand { get; }
 
-        private async Task Add(string command)
+        private Task AddAsync(string command)
         {
-            var keyBinding = KeyBindings.FirstOrDefault(k => k.Command == command);
-            await keyBinding?.ShowAddKeyBindingDialog();
+            return KeyBindings.First(k => k.Command == command).ShowAddKeyBindingDialogAsync();
         }
 
+        // Requires UI thread
         private void ClearKeyBindings()
         {
             foreach (var keyBinding in KeyBindings)
@@ -52,17 +49,16 @@ namespace FluentTerminal.App.ViewModels.Settings
             KeyBindings.Clear();
         }
 
+        // Requires UI thread
         private void Initialize(IDictionary<string, ICollection<KeyBinding>> keyBindings)
         {
-            _keyBindings = keyBindings;
-
             ClearKeyBindings();
 
             foreach (var value in Enum.GetValues(typeof(Command)))
             {
                 var command = (Command)value;
                 var viewModel = new KeyBindingsViewModel(command.ToString(), _dialogService, I18N.Translate($"{nameof(Command)}.{command}"), true);
-                foreach (var keyBinding in _keyBindings[command.ToString()])
+                foreach (var keyBinding in keyBindings[command.ToString()])
                 {
                     viewModel.Add(keyBinding);
                 }
@@ -74,12 +70,15 @@ namespace FluentTerminal.App.ViewModels.Settings
         private void OnEdited(string command, ICollection<KeyBinding> keyBindings)
         {
             _settingsService.SaveKeyBindings(command, keyBindings);
-            _trayProcessCommunicationService.UpdateToggleWindowKeyBindings();
+            _trayProcessCommunicationService.UpdateToggleWindowKeyBindingsAsync();
         }
 
-        private async Task RestoreDefaults()
+        // Requires UI thread
+        private async Task RestoreDefaultsAsync()
         {
-            var result = await _dialogService.ShowMessageDialogAsnyc(I18N.Translate("PleaseConfirm"), I18N.Translate("ConfirmRestoreKeybindings"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
+            // ConfigureAwait(true) because we need to execute Initialize in the calling (UI) thread.
+            var result = await _dialogService.ShowMessageDialogAsync(I18N.Translate("PleaseConfirm"),
+                I18N.Translate("ConfirmRestoreKeybindings"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
 
             if (result == DialogButton.OK)
             {

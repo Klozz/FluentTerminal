@@ -8,7 +8,7 @@ namespace FluentTerminal.Models
 
         public int FontSize { get; set; }
 
-        public bool BoldText { get; set; }
+        public int FontWeight { get; set; }
 
         public CursorStyle CursorStyle { get; set; }
 
@@ -20,10 +20,12 @@ namespace FluentTerminal.Models
 
         public double BackgroundOpacity { get; set; }
 
+        public bool UseAcrylicBackground { get; set; }
+
         public int Padding { get; set; }
 
         public uint ScrollBackLimit { get; set; }
 
-        public bool ShowTextCopied { get; set; }
+        public string WordSeparator { get; set; }
     }
 }

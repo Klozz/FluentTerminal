@@ -1,50 +1,17 @@
-﻿using FluentTerminal.Models.Enums;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Input;
-using FluentTerminal.Models;
+using FluentTerminal.App.Services;
+using FluentTerminal.Models.Enums;
 
 namespace FluentTerminal.SystemTray
 {
     public static class Utilities
     {
-        private const int FirstDynamicPort = 49151;
-        private static readonly List<int> _sentOutPorts = new List<int>();
-
-        public static int? GetAvailablePort()
-        {
-            var usedPorts = new List<int>();
-
-            var properties = IPGlobalProperties.GetIPGlobalProperties();
-
-            var connections = properties.GetActiveTcpConnections();
-            usedPorts.AddRange(connections.Where(c => c.LocalEndPoint.Port >= FirstDynamicPort).Select(c => c.LocalEndPoint.Port));
-
-            var endPoints = properties.GetActiveTcpListeners();
-            usedPorts.AddRange(endPoints.Where(e => e.Port >= FirstDynamicPort).Select(e => e.Port));
-
-            endPoints = properties.GetActiveUdpListeners();
-            usedPorts.AddRange(endPoints.Where(e => e.Port >= FirstDynamicPort).Select(e => e.Port));
-
-            usedPorts.AddRange(_sentOutPorts);
-
-            usedPorts.Sort();
-
-            for (var i = FirstDynamicPort; i < UInt16.MaxValue; i++)
-            {
-                if (!usedPorts.Contains(i))
-                {
-                    _sentOutPorts.Add(i);
-                    return i;
-                }
-            }
-            return null;
-        }
-
         public static Key ExtendVirtualKeyToInputKey(ExtendedVirtualKey key)
         {
             switch (key)
@@ -495,65 +462,233 @@ namespace FluentTerminal.SystemTray
             }
         }
 
-        #region Mosh locator
+        #region Mosh/SSH locator
 
-#if X64
-        private const string MoshArchDir = @"x64";
-#else
-        private const string MoshArchDir = @"x86";
-#endif
-
-        internal static string CheckIfMosh(this ShellProfile profile)
+        public static string ResolveLocation(string location)
         {
-            if (profile?.Location == null)
+            if (string.IsNullOrWhiteSpace(location))
             {
-                return null;
+                return location;
             }
 
-            string location = profile.Location.Trim();
+            location = location.Trim();
 
-            if (location.Equals("mosh.exe", StringComparison.OrdinalIgnoreCase) ||
-                location.Equals("mosh", StringComparison.OrdinalIgnoreCase))
+            if (location.Equals(Constants.MoshCommandName, StringComparison.OrdinalIgnoreCase) ||
+                location.Equals($"{Constants.MoshCommandName}.exe", StringComparison.OrdinalIgnoreCase))
             {
-                location = GetMoshPath();
-
-                if (string.IsNullOrEmpty(location))
-                {
-                    return "mosh.exe not found.";
-                }
-
-                profile.Location = location;
+                return GetMoshPath();
+            }
+            else if (location.Equals(Constants.SshCommandName, StringComparison.OrdinalIgnoreCase) ||
+                     location.Equals($"{Constants.SshCommandName}.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                return GetSshPath();
             }
 
-            return null;
+            return location;
+        }
+
+        private static string GetSshPath()
+        {
+            //
+            // See https://stackoverflow.com/a/25919981
+            //
+
+            string path;
+            if (Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess)
+            {
+                path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"Sysnative");
+            }
+            else
+            {
+                path = Environment.GetFolderPath(Environment.SpecialFolder.System);
+            }
+
+            path = Path.Combine(path, @"OpenSSH\ssh.exe");
+            return System.IO.File.Exists(path) ? path : null;
         }
 
         private static string GetMoshPath()
         {
-            DirectoryInfo dir = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory;
+            var directory = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory;
 
-            while (dir != null)
+            while (directory != null)
             {
-                string path = Path.Combine(dir.FullName, "MoshExecutables", MoshArchDir, "mosh.exe");
+                string path = Path.Combine(directory.FullName, "mosh.exe");
 
-                if (System.IO.File.Exists(path))
+                if (File.Exists(path))
                 {
                     return path;
                 }
 
-                dir = dir.Parent;
+                directory = directory.Parent;
             }
 
             return null;
         }
 
-        #endregion Mosh locator
+        #endregion Mosh/SSH locator
 
         internal static void SaveFile(string path, string content)
         {
             using (StreamWriter writer = new StreamWriter(path, false))
             {
                 writer.Write(content);
+            }
+        }
+
+        internal static string ReadFile(string path)
+        {
+            return File.ReadAllText(path);
+        }
+
+        private static bool? MuteProcess(int id, bool mute, bool force = false)
+        {
+            bool? isAudioSessionMuted = VolumeControl.GetAudioSessionMute(id);
+            if (isAudioSessionMuted != null &&
+                (force || isAudioSessionMuted != mute))
+            {
+                VolumeControl.SetAudioSessionMute(id, mute);
+            }
+            return isAudioSessionMuted;
+        }
+
+        private static bool MuteConhost(bool mute)
+        {
+            bool audioSessionFound = false;
+            foreach (Process conhost in Process.GetProcessesByName("conhost"))
+            {
+                bool? isAudioSessionMuted = MuteProcess(conhost.Id, mute);
+                if (isAudioSessionMuted != null)
+                {
+                    audioSessionFound = true;
+                }
+            }
+            return audioSessionFound;
+        }
+
+        private static void Calculate(Func<bool> eval, TimeSpan timeout)
+        {
+            var watch = Stopwatch.StartNew();
+            do
+            {
+                if (eval()) return;
+
+            } while (watch.Elapsed < timeout);
+        }
+
+        private static void SpawnConhostProcess(bool mute)
+        {
+            Logger.Instance.Debug($"SpawnConhostProcess starts mute={mute}");
+
+            Process cmdProcess = new Process();
+            cmdProcess.StartInfo.FileName = "cmd.exe";
+            cmdProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            cmdProcess.StartInfo.Arguments = "/k timeout 1 && \x07";
+            if (cmdProcess.Start() == false)
+            {
+                Logger.Instance.Debug($"Can't start {cmdProcess.StartInfo.FileName} {cmdProcess.StartInfo.Arguments}");
+                return;
+            }
+
+            const int sTimeout = 3;
+            int conhostProcessId = 0;
+            Calculate(() =>
+            {
+                if (!cmdProcess.HasExited)
+                {
+                    foreach (Process conhost in Process.GetProcessesByName("conhost"))
+                    {
+                        try
+                        {
+                            Process parent = ProcessUtils.ResolveParent(conhost.Id);
+                            if (parent != null && cmdProcess.Id == parent.Id)
+                            {
+                                conhostProcessId = conhost.Id;
+                                return true;
+                            }
+                        }
+                        catch (Win32Exception e)
+                        {
+                            Logger.Instance.Debug($"Exception with message \"{e.Message}\" on " +
+                                $"getting process parent id for conhost process {conhost.Id}");
+                        }
+                    }
+                }
+                return false;
+            }, new TimeSpan(0, 0, sTimeout));
+
+            if (conhostProcessId == 0)
+            {
+                Logger.Instance.Debug($"Can't find child conhost process");
+                return;
+            }
+
+            Logger.Instance.Debug($"Spawned conhost process id={conhostProcessId}. Starting muting of generated bell sound.");
+
+            Calculate(() =>
+            {
+                return MuteProcess(conhostProcessId, true, true) != null;
+
+            }, new TimeSpan(0, 0, sTimeout));
+
+            cmdProcess.WaitForExit(2000);
+
+            Logger.Instance.Debug($"Set conhost process mute state to {mute}.");
+
+            MuteProcess(conhostProcessId, mute);
+
+            cmdProcess.Kill();
+
+            Logger.Instance.Debug($"SpawnConhostProcess finishes mute={mute}");
+        }
+
+        internal static void MuteTerminal(bool mute)
+        {
+            bool audioSessionFound = MuteConhost(mute);
+
+            if (audioSessionFound == true)
+            {
+                return;
+            }
+
+            SpawnConhostProcess(mute);
+
+            MuteConhost(mute);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ProcessUtils
+        {
+            // PROCESS_BASIC_INFORMATION fields start
+            internal IntPtr Reserved1;
+            internal IntPtr PebBaseAddress;
+            internal IntPtr Reserved2_0;
+            internal IntPtr Reserved2_1;
+            internal IntPtr UniqueProcessId;
+            internal IntPtr InheritedFromUniqueProcessId;
+            // PROCESS_BASIC_INFORMATION fields end
+
+            [DllImport("ntdll.dll")]
+            private static extern int NtQueryInformationProcess(IntPtr processHandle, int processInformationClass, ref ProcessUtils processInformation, int processInformationLength, out int returnLength);
+
+            public static Process ResolveParent(int processId)
+            {
+                Process process = Process.GetProcessById(processId);
+                ProcessUtils pbi = new ProcessUtils();
+                int result = NtQueryInformationProcess(process.Handle, 0, ref pbi, Marshal.SizeOf(pbi), out var returnLength);
+                if (result != 0)
+                {
+                    throw new Win32Exception(result);
+                }
+
+                try
+                {
+                    return Process.GetProcessById(pbi.InheritedFromUniqueProcessId.ToInt32());
+                }
+                catch (ArgumentException)
+                {
+                    return null;
+                }
             }
         }
     }

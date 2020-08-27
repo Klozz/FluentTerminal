@@ -12,22 +12,43 @@ namespace FluentTerminal.App.Services
 
         void Initialize(IAppServiceConnection appServiceConnection);
 
-        Task<CreateTerminalResponse> CreateTerminal(int id, TerminalSize size, ShellProfile shellProfile, SessionType sessionType);
+        Task<CreateTerminalResponse> CreateTerminalAsync(byte id, TerminalSize size, ShellProfile shellProfile,
+            SessionType sessionType);
 
-        Task ResizeTerminal(int id, TerminalSize size);
+        Task<PauseTerminalOutputResponse> PauseTerminalOutputAsync(byte id, bool pause);
 
-        Task UpdateToggleWindowKeyBindings();
+        Task ResizeTerminalAsync(byte id, TerminalSize size);
 
-        Task Write(int terminalId, byte[] data);
+        Task UpdateToggleWindowKeyBindingsAsync();
 
-        void SubscribeForTerminalOutput(int terminalId, Action<byte[]> callback);
+        Task WriteAsync(byte terminalId, byte[] data);
 
-        Task CloseTerminal(int terminalId);
-        Task<GetAvailablePortResponse> GetAvailablePort();
-        int GetNextTerminalId();
+        void SubscribeForTerminalOutput(byte terminalId, Action<byte[]> callback);
 
-        Task<string> GetUserName();
+        void UnsubscribeFromTerminalOutput(byte terminalId);
+
+        Task CloseTerminalAsync(byte terminalId);
+
+        byte GetNextTerminalId();
+
+        Task<string> GetUserNameAsync();
 
         Task SaveTextFileAsync(string path, string content);
+
+        Task<string> ReadTextFileAsync(string path);
+
+        Task<string> GetSshConfigDirAsync();
+
+        Task<string[]> GetFilesFromSshConfigDirAsync();
+
+        Task<bool> CheckFileExistsAsync(string path);
+
+        Task MuteTerminalAsync(bool mute);
+
+        void UpdateSettings(ApplicationSettings settings);
+
+        Task<string> GetCommandPathAsync(string command);
+
+        Task QuitApplicationAsync();
     }
 }

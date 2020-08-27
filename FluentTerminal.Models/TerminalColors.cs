@@ -1,4 +1,6 @@
-﻿namespace FluentTerminal.Models
+﻿using System;
+
+namespace FluentTerminal.Models
 {
     public class TerminalColors
     {
@@ -7,6 +9,8 @@
         public string Cursor { get; set; }
         public string CursorAccent { get; set; }
         public string Selection { get; set; }
+        public string SelectionForeground { get; set; }
+        public string SelectionBackground { get; set; }
 
         public string Black { get; set; }
         public string Red { get; set; }
@@ -84,6 +88,15 @@
                     && other.BrightWhite.Equals(BrightWhite);
             }
             return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(
+                HashCode.Combine(Foreground, Background, Cursor, CursorAccent, Selection),
+                HashCode.Combine(Black, Red, Green, Yellow, Blue, Magenta, Cyan, White),
+                HashCode.Combine(BrightBlack, BrightRed, BrightGreen, BrightYellow, BrightBlue, BrightMagenta, BrightCyan, BrightWhite)
+            );
         }
     }
 }

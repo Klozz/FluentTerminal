@@ -1,8 +1,9 @@
-﻿using FluentTerminal.App.Services.Utilities;
-using FluentTerminal.Models;
+﻿using FluentTerminal.Models;
 using FluentTerminal.Models.Enums;
 using System;
 using System.Collections.Generic;
+using Windows.Foundation.Metadata;
+using Windows.Storage;
 
 namespace FluentTerminal.App.Services.Implementation
 {
@@ -10,6 +11,14 @@ namespace FluentTerminal.App.Services.Implementation
     {
         public ApplicationSettings GetDefaultApplicationSettings()
         {
+            var logDirectoryPath = string.Empty;
+            try
+            {
+                // Accessing ApplicationData.Current during run of unit tests causes
+                // "System.InvalidOperationException : The process has no package identity" exception.
+                logDirectoryPath = ApplicationData.Current.LocalCacheFolder.Path;
+            } catch (InvalidOperationException) { }
+
             return new ApplicationSettings
             {
                 ConfirmClosingTabs = false,
@@ -17,15 +26,23 @@ namespace FluentTerminal.App.Services.Implementation
                 UnderlineSelectedTab = false,
                 InactiveTabColorMode = InactiveTabColorMode.Background,
                 NewTerminalLocation = NewTerminalLocation.Tab,
+                TabWindowCascadingAppMenu = true,
                 TabsPosition = TabsPosition.Top,
                 CopyOnSelect = false,
                 MouseMiddleClickAction = MouseAction.None,
                 MouseRightClickAction = MouseAction.ContextMenu,
-                AlwaysShowTabs = false,
-                AlwaysUseWinPty = true,
                 ShowNewOutputIndicator = false,
                 EnableTrayIcon = true,
-                ShowCustomTitleInTitlebar = true
+                ShowCustomTitleInTitlebar = true,
+                UseMoshByDefault = true,
+                AutoFallbackToWindowsUsernameInLinks = true,
+                RTrimCopiedLines = true,
+                MuteTerminalBeeps = true,
+                EnableLogging = false,
+                PrintableOutputOnly = true,
+                LogDirectoryPath = logDirectoryPath,
+                UseConPty = true,
+                ShowTextCopied = false
             };
         }
 
@@ -85,6 +102,30 @@ namespace FluentTerminal.App.Services.Implementation
                     }
                 };
 
+                case Command.DuplicateTab:
+                    return new List<KeyBinding>
+                {
+                    new KeyBinding
+                    {
+                        Command = nameof(Command.DuplicateTab),
+                        Ctrl = true,
+                        Shift = true,
+                        Key = (int)ExtendedVirtualKey.D
+                    }
+                };
+
+                case Command.ReconnectTab:
+                    return new List<KeyBinding>
+                {
+                    new KeyBinding
+                    {
+                        Command = nameof(Command.ReconnectTab),
+                        Ctrl = true,
+                        Alt = true,
+                        Key = (int)ExtendedVirtualKey.R
+                    }
+                };
+
                 case Command.NewTab:
                     return new List<KeyBinding>
                 {
@@ -97,29 +138,54 @@ namespace FluentTerminal.App.Services.Implementation
                     }
                 };
 
-                case Command.ConfigurableNewTab:
-                    return new List<KeyBinding>
-                {
-                    new KeyBinding
-                    {
-                        Command = nameof(Command.ConfigurableNewTab),
-                        Ctrl = true,
-                        Alt = true,
-                        Key = (int)ExtendedVirtualKey.T
-                    }
-                };
-
                 case Command.NewSshTab:
                     return new List<KeyBinding>
                     {
                         new KeyBinding
                         {
                             Command = nameof(Command.NewSshTab),
+                            Ctrl = true,
+                            Shift = true,
+                            Key = (int)ExtendedVirtualKey.Y
+                        }
+                    };
+
+                case Command.NewSshWindow:
+                    return new List<KeyBinding>
+                    {
+                        new KeyBinding
+                        {
+                            Command = nameof(Command.NewSshWindow),
+                            Ctrl = true,
+                            Alt = true,
+                            Key = (int)ExtendedVirtualKey.Y
+                        }
+                    };
+
+                case Command.NewCustomCommandTab:
+                    return new List<KeyBinding>
+                    {
+                        new KeyBinding
+                        {
+                            Command = nameof(Command.NewCustomCommandTab),
+                            Ctrl = true,
                             Alt = true,
                             Key = (int)ExtendedVirtualKey.T
                         }
                     };
 
+                case Command.NewCustomCommandWindow:
+                    return new List<KeyBinding>
+                    {
+                        new KeyBinding
+                        {
+                            Command = nameof(Command.NewCustomCommandWindow),
+                            Ctrl = true,
+                            Alt = true,
+                            Key = (int)ExtendedVirtualKey.N
+                        }
+                    };
+                    
                 case Command.ChangeTabTitle:
                     return new List<KeyBinding>
                 {
@@ -152,18 +218,6 @@ namespace FluentTerminal.App.Services.Implementation
                         Command = nameof(Command.NewWindow),
                         Ctrl = true,
                         Shift = true,
-                        Key = (int)ExtendedVirtualKey.N
-                    }
-                };
-
-                case Command.ConfigurableNewWindow:
-                    return new List<KeyBinding>
-                {
-                    new KeyBinding
-                    {
-                        Command = nameof(Command.ConfigurableNewWindow),
-                        Ctrl = true,
-                        Alt = true,
                         Key = (int)ExtendedVirtualKey.N
                     }
                 };
@@ -268,9 +322,39 @@ namespace FluentTerminal.App.Services.Implementation
                         Key = (int)ExtendedVirtualKey.L
                     }
                 };
+                case Command.IncreaseFontSize:
+                    return new List<KeyBinding>
+                    {
+                        new KeyBinding
+                        {
+                            Command = nameof(Command.IncreaseFontSize),
+                            Ctrl = true,
+                            Key = (int)ExtendedVirtualKey.Plus
+                        }
+                    };
+                case Command.DecreaseFontSize:
+                    return new List<KeyBinding>
+                    {
+                        new KeyBinding
+                        {
+                            Command = nameof(Command.DecreaseFontSize),
+                            Ctrl = true,
+                            Key = (int)ExtendedVirtualKey.Minus
+                        }
+                    };
+                case Command.ResetFontSize:
+                    return new List<KeyBinding>
+                    {
+                        new KeyBinding
+                        {
+                            Command = nameof(Command.ResetFontSize),
+                            Ctrl = true,
+                            Key = (int)ExtendedVirtualKey.Number0
+                        }
+                    };
+                default:
+                    throw new InvalidOperationException($"Default keybindings for Command '{command}' are missing");
             }
-
-            return null;
         }
 
         public Guid GetDefaultShellProfileId()
@@ -285,7 +369,7 @@ namespace FluentTerminal.App.Services.Implementation
                 new TabTheme
                 {
                     Id = 0,
-                    Name = I18N.Translate("TabTheme.None"),
+                    Name = "TabTheme.None",
                     BackgroundOpacity = double.NaN,
                     BackgroundPointerOverOpacity = double.NaN,
                     BackgroundPressedOpacity = double.NaN,
@@ -296,41 +380,42 @@ namespace FluentTerminal.App.Services.Implementation
                 new TabTheme
                 {
                     Id = 1,
-                    Name = I18N.Translate("TabTheme.Red"),
+                    Name = "TabTheme.Red",
                     Color = "#E81123"
                 },
                 new TabTheme
                 {
                     Id = 2,
-                    Name = I18N.Translate("TabTheme.Green"),
+                    Name = "TabTheme.Green",
                     Color = "#10893E"
                 },
                 new TabTheme
                 {
                     Id = 3,
-                    Name = I18N.Translate("TabTheme.Blue"),
+                    Name = "TabTheme.Blue",
                     Color = "#0078D7"
                 },
                 new TabTheme
                 {
                     Id = 4,
-                    Name = I18N.Translate("TabTheme.Purple"),
+                    Name = "TabTheme.Purple",
                     Color = "#881798"
                 },
                 new TabTheme
                 {
                     Id = 5,
-                    Name = I18N.Translate("TabTheme.Orange"),
+                    Name = "TabTheme.Orange",
                     Color = "#FF8C00"
                 },
                 new TabTheme
                 {
                     Id = 6,
-                    Name = I18N.Translate("TabTheme.Teal"),
+                    Name = "TabTheme.Teal",
                     Color = "#00B7C3"
                 }
             };
         }
+
         public TerminalOptions GetDefaultTerminalOptions()
         {
             return new TerminalOptions
@@ -341,10 +426,12 @@ namespace FluentTerminal.App.Services.Implementation
                 ScrollBarStyle = ScrollBarStyle.Hidden,
                 FontFamily = "Consolas",
                 FontSize = 13,
-                BoldText = false,
+                FontWeight = 400,
                 BackgroundOpacity = 0.8,
                 Padding = 12,
-                ScrollBackLimit = 1000
+                ScrollBackLimit = 1000,
+                WordSeparator = " ()[]{}:;|│!&*<>@&quot;&squo;",
+                UseAcrylicBackground = true
             };
         }
 
@@ -361,11 +448,17 @@ namespace FluentTerminal.App.Services.Implementation
                 {
                     Id = GetDefaultShellProfileId(),
                     Name = "Powershell",
+                    MigrationVersion = ShellProfile.CurrentMigrationVersion,
                     Arguments = string.Empty,
                     Location = @"C:\windows\system32\WindowsPowerShell\v1.0\powershell.exe",
                     PreInstalled = true,
                     WorkingDirectory = string.Empty,
-                    LineEndingTranslation = LineEndingStyle.DoNotModify,
+                    UseConPty = ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 8), // Windows 10 1903+
+                    UseBuffer = false,
+                    EnvironmentVariables = new Dictionary<string, string>
+                    {
+                        ["TERM"] = "xterm-256color"
+                    },
                     KeyBindings = new []
                     {
                         new KeyBinding
@@ -383,11 +476,17 @@ namespace FluentTerminal.App.Services.Implementation
                 {
                     Id = Guid.Parse("ab942a61-7673-4755-9bd8-765aff91d9a3"),
                     Name = "CMD",
+                    MigrationVersion = ShellProfile.CurrentMigrationVersion,
                     Arguments = string.Empty,
                     Location = @"C:\Windows\System32\cmd.exe",
                     PreInstalled = true,
                     WorkingDirectory = string.Empty,
-                    LineEndingTranslation = LineEndingStyle.DoNotModify,
+                    UseConPty = ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 7), // Windows 10 1809+
+                    UseBuffer = true,
+                    EnvironmentVariables = new Dictionary<string, string>
+                    {
+                        ["TERM"] = "xterm-256color"
+                    },
                     KeyBindings = new []
                     {
                         new KeyBinding
@@ -405,11 +504,17 @@ namespace FluentTerminal.App.Services.Implementation
                 {
                     Id= Guid.Parse("e5785ad6-584f-40cb-bdcd-d5b3b3953e7f"),
                     Name = "WSL",
+                    MigrationVersion = ShellProfile.CurrentMigrationVersion,
                     Arguments = string.Empty,
                     Location = @"C:\windows\system32\wsl.exe",
                     PreInstalled = true,
                     WorkingDirectory = string.Empty,
-                    LineEndingTranslation = LineEndingStyle.ToLF,
+                    UseConPty = ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 7), // Windows 10 1809+
+                    UseBuffer = true, //TODO: Set to false if the buffer causes issues with WSL.
+                    EnvironmentVariables = new Dictionary<string, string>
+                    {
+                        ["TERM"] = "xterm-256color"
+                    },
                     KeyBindings = new []
                     {
                         new KeyBinding

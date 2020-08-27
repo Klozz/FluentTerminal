@@ -3,57 +3,88 @@ using System;
 using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using FluentTerminal.Models.Messages;
+using GalaSoft.MvvmLight.Messaging;
+using FluentTerminal.Models;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Imaging;
+using Windows.UI;
 
 namespace FluentTerminal.App.Views
 {
+    // ReSharper disable once RedundantExtendsListEntry
     public sealed partial class TerminalView : UserControl
     {
-        private readonly ITerminalView _terminalView;
+        private ITerminalView _terminalView;
 
         public TerminalView(TerminalViewModel viewModel)
         {
+            Messenger.Default.Register<KeyBindingsChangedMessage>(this, OnKeyBindingsChanged);
+            Messenger.Default.Register<TerminalOptionsChangedMessage>(this, OnTerminalOptionsChanged);
+
             ViewModel = viewModel;
             ViewModel.SearchStarted += OnSearchStarted;
             ViewModel.Activated += OnActivated;
             ViewModel.ThemeChanged += OnThemeChanged;
-            ViewModel.OptionsChanged += OnOptionsChanged;
-            ViewModel.KeyBindingsChanged += OnKeyBindingsChanged;
             ViewModel.FindNextRequested += OnFindNextRequested;
             ViewModel.FindPreviousRequested += OnFindPreviousRequested;
+            ViewModel.FontSizeChanged += OnFontSizeChanged;
             InitializeComponent();
             _terminalView = new XtermTerminalView();
             TerminalContainer.Children.Add((UIElement)_terminalView);
-            _terminalView.Initialize(ViewModel);
+            _terminalView.InitializeAsync(ViewModel);
+            ViewModel.TerminalView = _terminalView;
+            ViewModel.Initialized = true;
+
+            SetGridBackgroundTheme(ViewModel.TerminalTheme);
+
+            viewModel.Overlay = (OverlayViewModel) MessageOverlay.DataContext;
         }
 
-        public TerminalViewModel ViewModel { get; }
-
-        private async void OnActivated(object sender, EventArgs e)
+        public void DisposalPrepare()
         {
-            if (_terminalView != null)
-            {
-                await _terminalView.FocusTerminal().ConfigureAwait(true);
-            }
+            Bindings.StopTracking();
+            TerminalContainer.Children.Remove((UIElement)_terminalView);
+            _terminalView?.Dispose();
+            _terminalView = null;
+
+            Messenger.Default.Unregister(this);
+
+            ViewModel.SearchStarted -= OnSearchStarted;
+            ViewModel.Activated -= OnActivated;
+            ViewModel.ThemeChanged -= OnThemeChanged;
+            ViewModel.FindNextRequested -= OnFindNextRequested;
+            ViewModel.FindPreviousRequested -= OnFindPreviousRequested;
+            ViewModel.FontSizeChanged -= OnFontSizeChanged;
+
+            ViewModel = null;
         }
 
-        private async void OnFindNextRequested(object sender, string e)
+        public TerminalViewModel ViewModel { get; private set; }
+
+        private void OnActivated(object sender, EventArgs e)
         {
-            await _terminalView.FindNext(e).ConfigureAwait(true);
+            _terminalView?.FocusTerminalAsync();
         }
 
-        private async void OnFindPreviousRequested(object sender, string e)
+        private void OnFindNextRequested(object sender, SearchRequest e)
         {
-            await _terminalView.FindPrevious(e).ConfigureAwait(true);
+            _terminalView.FindNextAsync(e);
         }
 
-        private async void OnKeyBindingsChanged(object sender, EventArgs e)
+        private void OnFindPreviousRequested(object sender, SearchRequest e)
         {
-            await _terminalView.ChangeKeyBindings().ConfigureAwait(true);
+            _terminalView.FindPreviousAsync(e);
         }
 
-        private async void OnOptionsChanged(object sender, Models.TerminalOptions e)
+        private void OnKeyBindingsChanged(KeyBindingsChangedMessage message)
         {
-            await _terminalView.ChangeOptions(e).ConfigureAwait(true);
+            _terminalView.ChangeKeyBindingsAsync();
+        }
+
+        private void OnTerminalOptionsChanged(TerminalOptionsChangedMessage message)
+        {
+            _terminalView.ChangeOptionsAsync(message.TerminalOptions);
         }
 
         private void OnSearchStarted(object sender, EventArgs e)
@@ -69,13 +100,53 @@ namespace FluentTerminal.App.Views
             }
             else if (e.Key == VirtualKey.Enter)
             {
-                ViewModel.FindNextCommand.Execute(null);
+                ViewModel.FindPreviousCommand.Execute(null);
             }
         }
 
-        private async void OnThemeChanged(object sender, Models.TerminalTheme e)
+        private async void OnThemeChanged(object sender, TerminalTheme e)
         {
-            await _terminalView.ChangeTheme(e).ConfigureAwait(true);
+            await _terminalView.ChangeThemeAsync(e);
+            SetGridBackgroundTheme(e);
+        }
+
+        private async void OnFontSizeChanged(object sender, int e)
+        {
+            await _terminalView.ChangeFontSize(e);
+        }
+
+        private void SetGridBackgroundTheme(TerminalTheme terminalTheme)
+        {
+            var imageFile = terminalTheme.BackgroundImage;
+
+            Brush backgroundBrush;
+
+            if (imageFile != null && System.IO.File.Exists(imageFile.Path))
+            {
+                backgroundBrush = new ImageBrush()
+                {
+                    ImageSource = new BitmapImage(new Uri(
+                        imageFile.Path,
+                        UriKind.Absolute)),
+                    Stretch = Stretch.UniformToFill
+                };
+            }
+            else
+            {
+                backgroundBrush = new SolidColorBrush(Colors.Transparent);
+            }
+
+            TerminalContainer.Background = backgroundBrush;
+        }
+
+        private void SearchTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            ViewModel.SearchHasFocus = true;
+        }
+
+        private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ViewModel.SearchHasFocus = false;
         }
     }
 }

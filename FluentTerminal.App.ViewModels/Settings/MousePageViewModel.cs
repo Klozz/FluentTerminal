@@ -4,9 +4,6 @@ using FluentTerminal.Models;
 using FluentTerminal.Models.Enums;
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace FluentTerminal.App.ViewModels.Settings
@@ -17,8 +14,6 @@ namespace FluentTerminal.App.ViewModels.Settings
         private readonly IDialogService _dialogService;
         private readonly IDefaultValueProvider _defaultValueProvider;
         private readonly ApplicationSettings _applicationSettings;
-        private bool _editingMouseRightClickAction;
-        private bool _editingMouseMiddleClickAction;
 
         public MousePageViewModel(ISettingsService settingsService, IDialogService dialogService, IDefaultValueProvider defaultValueProvider)
         {
@@ -27,7 +22,7 @@ namespace FluentTerminal.App.ViewModels.Settings
             _defaultValueProvider = defaultValueProvider;
             _applicationSettings = _settingsService.GetApplicationSettings();
 
-            RestoreDefaultsCommand = new RelayCommand(async () => await RestoreDefaults().ConfigureAwait(false));
+            RestoreDefaultsCommand = new RelayCommand(async () => await RestoreDefaultsAsync().ConfigureAwait(false));
         }
 
         public bool CopyOnSelect
@@ -49,16 +44,11 @@ namespace FluentTerminal.App.ViewModels.Settings
             get => _applicationSettings.MouseRightClickAction;
             set
             {
-                if (_applicationSettings.MouseRightClickAction != value && !_editingMouseRightClickAction)
+                if (_applicationSettings.MouseRightClickAction != value)
                 {
-                    _editingMouseRightClickAction = true;
                     _applicationSettings.MouseRightClickAction = value;
                     _settingsService.SaveApplicationSettings(_applicationSettings);
                     RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(MouseRightClickNoneIsSelected));
-                    RaisePropertyChanged(nameof(MouseRightClickContextMenuIsSelected));
-                    RaisePropertyChanged(nameof(MouseRightClickPasteIsSelected));
-                    _editingMouseRightClickAction = false;
                 }
             }
         }
@@ -66,19 +56,25 @@ namespace FluentTerminal.App.ViewModels.Settings
         public bool MouseRightClickNoneIsSelected
         {
             get => MouseRightClickAction == MouseAction.None;
-            set => MouseRightClickAction = MouseAction.None;
+            set { if (value) MouseRightClickAction = MouseAction.None; }
         }
 
         public bool MouseRightClickContextMenuIsSelected
         {
             get => MouseRightClickAction == MouseAction.ContextMenu;
-            set => MouseRightClickAction = MouseAction.ContextMenu;
+            set { if (value) MouseRightClickAction = MouseAction.ContextMenu; }
         }
 
         public bool MouseRightClickPasteIsSelected
         {
             get => MouseRightClickAction == MouseAction.Paste;
-            set => MouseRightClickAction = MouseAction.Paste;
+            set { if (value) MouseRightClickAction = MouseAction.Paste; }
+        }
+
+        public bool MouseRightClickCopySelectionOrPasteIsSelected
+        {
+            get => MouseRightClickAction == MouseAction.CopySelectionOrPaste;
+            set { if (value) MouseRightClickAction = MouseAction.CopySelectionOrPaste; }
         }
 
         public MouseAction MouseMiddleClickAction
@@ -86,16 +82,11 @@ namespace FluentTerminal.App.ViewModels.Settings
             get => _applicationSettings.MouseMiddleClickAction;
             set
             {
-                if (_applicationSettings.MouseMiddleClickAction != value && !_editingMouseMiddleClickAction)
+                if (_applicationSettings.MouseMiddleClickAction != value)
                 {
-                    _editingMouseMiddleClickAction = true;
                     _applicationSettings.MouseMiddleClickAction = value;
                     _settingsService.SaveApplicationSettings(_applicationSettings);
                     RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(MouseMiddleClickNoneIsSelected));
-                    RaisePropertyChanged(nameof(MouseMiddleClickContextMenuIsSelected));
-                    RaisePropertyChanged(nameof(MouseMiddleClickPasteIsSelected));
-                    _editingMouseMiddleClickAction = false;
                 }
             }
         }
@@ -103,26 +94,36 @@ namespace FluentTerminal.App.ViewModels.Settings
         public bool MouseMiddleClickNoneIsSelected
         {
             get => MouseMiddleClickAction == MouseAction.None;
-            set => MouseMiddleClickAction = MouseAction.None;
+            set { if (value) MouseMiddleClickAction = MouseAction.None; }
         }
 
         public bool MouseMiddleClickContextMenuIsSelected
         {
             get => MouseMiddleClickAction == MouseAction.ContextMenu;
-            set => MouseMiddleClickAction = MouseAction.ContextMenu;
+            set { if (value) MouseMiddleClickAction = MouseAction.ContextMenu; }
         }
 
         public bool MouseMiddleClickPasteIsSelected
         {
             get => MouseMiddleClickAction == MouseAction.Paste;
-            set => MouseMiddleClickAction = MouseAction.Paste;
+            set { if (value) MouseMiddleClickAction = MouseAction.Paste; }
+        }
+
+        public bool MouseMiddleClickCopySelectionOrPasteIsSelected
+        {
+            get => MouseMiddleClickAction == MouseAction.CopySelectionOrPaste;
+            set { if (value) MouseMiddleClickAction = MouseAction.CopySelectionOrPaste; }
         }
 
         public RelayCommand RestoreDefaultsCommand { get; }
 
-        private async Task RestoreDefaults()
+        // Requires UI thread
+        private async Task RestoreDefaultsAsync()
         {
-            var result = await _dialogService.ShowMessageDialogAsnyc(I18N.Translate("PleaseConfirm"), I18N.Translate("ConfirmRestoreMouseSettings"), DialogButton.OK, DialogButton.Cancel).ConfigureAwait(true);
+            // ConfigureAwait(true) because we're setting some view-model properties afterwards.
+            var result = await _dialogService.ShowMessageDialogAsync(I18N.Translate("PleaseConfirm"),
+                    I18N.Translate("ConfirmRestoreMouseSettings"), DialogButton.OK, DialogButton.Cancel)
+                .ConfigureAwait(true);
 
             if (result == DialogButton.OK)
             {

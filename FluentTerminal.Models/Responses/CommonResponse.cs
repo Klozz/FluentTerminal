@@ -1,9 +1,7 @@
 ﻿namespace FluentTerminal.Models.Responses
 {
-    public class CommonResponse
+    public class CommonResponse : TerminalResponse
     {
-        public bool Success { get; set; }
-
-        public string Error { get; set; }
+        public override byte Identifier => (byte) MessageIdentifiers.CommonResponse;
     }
 }

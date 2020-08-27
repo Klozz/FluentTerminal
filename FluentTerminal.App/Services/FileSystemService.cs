@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FluentTerminal.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -10,18 +11,16 @@ namespace FluentTerminal.App.Services
 {
     public class FileSystemService : IFileSystemService
     {
-        public async Task<string> BrowseForDirectory()
+        public Task<string> BrowseForDirectoryAsync()
         {
-            var picker = new FolderPicker();
+            var picker = new FolderPicker{ SuggestedStartLocation = PickerLocationId.ComputerFolder };
             picker.FileTypeFilter.Add(".whatever"); // else a ComException is thrown
-            picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
 
-            var folder = await picker.PickSingleFolderAsync();
-
-            return folder?.Path;
+            return picker.PickSingleFolderAsync().AsTask()
+                .ContinueWith(t => t.Result?.Path, TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
-        public async Task<File> OpenFile(IEnumerable<string> fileTypes)
+        public async Task<File> OpenFileAsync(IEnumerable<string> fileTypes)
         {
             var picker = new FileOpenPicker
             {
@@ -43,11 +42,27 @@ namespace FluentTerminal.App.Services
             return null;
         }
 
-        public async Task SaveTextFile(string name, string fileTypeDescription, string fileType, string content)
+        public async Task<ImageFile> SaveImageInRoamingAsync(ImageFile imageFile)
         {
-            var picker = new FileSavePicker();
-            picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
-            picker.SuggestedFileName = name;
+            var file = await StorageFile.GetFileFromPathAsync(imageFile.Path);
+
+            var backgroundThemeFolder = await ApplicationData.Current.RoamingFolder.CreateFolderAsync("BackgroundTheme", CreationCollisionOption.OpenIfExists);
+
+            var storageFile = await file.CopyAsync(backgroundThemeFolder, file.DisplayName, NameCollisionOption.GenerateUniqueName);
+
+            return new ImageFile(
+                storageFile.DisplayName,
+                storageFile.FileType,
+                storageFile.Path);
+        }
+
+        public async Task SaveTextFileAsync(string name, string fileTypeDescription, string fileType, string content)
+        {
+            var picker = new FileSavePicker
+            {
+                SuggestedStartLocation = PickerLocationId.ComputerFolder, 
+                SuggestedFileName = name
+            };
             picker.FileTypeChoices.Add(fileTypeDescription, new List<string> { fileType });
 
             var file = await picker.PickSaveFileAsync();
